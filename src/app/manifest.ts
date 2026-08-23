@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "YKS Koçluk",
-    short_name: "YKS Koçluk",
+    name: "CoachReachAI",
+    short_name: "CoachReachAI",
     description:
       "Haftalık görüşme ajandası, canlı çalışma takibi, deneme netleri ve rutin analizi",
     start_url: "/",

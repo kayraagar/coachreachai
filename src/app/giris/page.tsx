@@ -10,7 +10,6 @@ export default function GirisPage() {
 
   return (
     <AuthShell
-      title="YKS Koçluk"
       subtitle="Hesabına giriş yap"
       footer={
         <>

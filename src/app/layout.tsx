@@ -7,15 +7,15 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "YKS Koçluk",
-    template: "%s · YKS Koçluk",
+    default: "CoachReachAI",
+    template: "%s · CoachReachAI",
   },
   description:
     "Haftalık görüşme ajandası, canlı çalışma takibi, deneme netleri ve rutin analizi ile öğrenci–koç paneli",
-  applicationName: "YKS Koçluk",
+  applicationName: "CoachReachAI",
   appleWebApp: {
     capable: true,
-    title: "YKS Koçluk",
+    title: "CoachReachAI",
     statusBarStyle: "default",
   },
   formatDetection: { telephone: false },
@@ -25,8 +25,8 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "website",
-    siteName: "YKS Koçluk",
-    title: "YKS Koçluk",
+    siteName: "CoachReachAI",
+    title: "CoachReachAI",
     description: "Öğrenci ve koç için canlı çalışma takibi ve haftalık görüşme ajandası",
   },
   robots: { index: false, follow: false },
@@ -43,7 +43,7 @@ export const viewport: Viewport = {
 };
 
 /** Tema, ilk boyamadan önce uygulanır — böylece geçişte beyaz parlama olmaz. */
-const themeScript = `(function(){try{var t=localStorage.getItem('yks-theme');if(!t){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme='light';}})();`;
+const themeScript = `(function(){try{var t=localStorage.getItem('cra-theme');if(!t){t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme='light';}})();`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (

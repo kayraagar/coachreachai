@@ -1,7 +1,8 @@
 import { signOut } from "@/lib/actions/auth";
 import { SideNav, BottomNav, type NavItem } from "./SideNav";
 import { ThemeToggle } from "./ThemeToggle";
-import { IconLogout, IconSpark } from "./Icons";
+import { IconLogout } from "./Icons";
+import { Logo } from "./Logo";
 import { OnlineList } from "@/components/realtime/PresenceProvider";
 
 export function AppShell({
@@ -28,7 +29,9 @@ export function AppShell({
         style={{ borderColor: "var(--border-hairline)", background: "var(--surface-1)" }}
       >
         <div className="flex flex-col gap-5">
-          <Brand />
+          <div className="border-b pb-4" style={{ borderColor: "var(--border-hairline)" }}>
+            <Logo />
+          </div>
           <SideNav items={items} />
           <OnlineList selfId={userId} />
           {aside}
@@ -44,7 +47,7 @@ export function AppShell({
           background: "color-mix(in oklab, var(--surface-1) 82%, transparent)",
         }}
       >
-        <Brand />
+        <Logo size={30} />
         <div className="flex items-center gap-2">
           <ThemeToggle />
           <form action={signOut}>
@@ -60,26 +63,6 @@ export function AppShell({
       </main>
 
       <BottomNav items={items} />
-    </div>
-  );
-}
-
-function Brand() {
-  return (
-    <div className="flex items-center gap-2.5">
-      <span
-        className="grid h-8 w-8 place-items-center rounded-xl"
-        style={{
-          background: "linear-gradient(140deg, var(--accent), var(--series-3))",
-          color: "var(--accent-contrast)",
-          boxShadow: "var(--glow)",
-        }}
-      >
-        <IconSpark />
-      </span>
-      <span className="text-sm font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
-        YKS Koçluk
-      </span>
     </div>
   );
 }

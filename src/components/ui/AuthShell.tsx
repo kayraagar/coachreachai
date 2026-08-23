@@ -1,14 +1,12 @@
-import { IconSpark } from "./Icons";
+import { LogoTile, Wordmark } from "./Logo";
 import { ThemeToggle } from "./ThemeToggle";
 
 /** Giriş / kayıt ekranlarının ortak çerçevesi. */
 export function AuthShell({
-  title,
   subtitle,
   children,
   footer,
 }: {
-  title: string;
   subtitle: string;
   children: React.ReactNode;
   footer: React.ReactNode;
@@ -19,19 +17,22 @@ export function AuthShell({
         <ThemeToggle />
       </div>
 
-      <div className="w-full max-w-sm">
+      {/* markanın arkasındaki yumuşak hale */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-80"
+        style={{
+          background:
+            "radial-gradient(38rem 20rem at 50% -12%, color-mix(in oklab, var(--accent) 22%, transparent), transparent 70%)",
+        }}
+      />
+
+      <div className="relative w-full max-w-sm">
         <div className="reveal mb-8 flex flex-col items-center text-center">
-          <span
-            className="mb-4 grid h-12 w-12 place-items-center rounded-2xl"
-            style={{
-              background: "linear-gradient(140deg, var(--accent), var(--series-3))",
-              color: "var(--accent-contrast)",
-              boxShadow: "var(--glow)",
-            }}
-          >
-            <IconSpark className="h-6 w-6" />
-          </span>
-          <h1 className="text-2xl font-semibold tracking-tight gradient-text">{title}</h1>
+          <LogoTile size={56} className="mb-4" />
+          <h1 className="text-2xl">
+            <Wordmark />
+          </h1>
           <p className="mt-1.5 text-sm" style={{ color: "var(--text-secondary)" }}>
             {subtitle}
           </p>

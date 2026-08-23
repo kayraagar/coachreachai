@@ -1,4 +1,4 @@
-# YKS Koçluk
+# CoachReachAI
 
 Öğrenci ve koç için canlı çalışma takibi, deneme net analizi ve **Haftalık Görüşme
 Ajandası** yönetimi. Next.js 16 (App Router) + Supabase (Postgres, Auth, Realtime).

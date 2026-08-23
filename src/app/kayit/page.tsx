@@ -11,7 +11,6 @@ export default function KayitPage() {
 
   return (
     <AuthShell
-      title="YKS Koçluk"
       subtitle="Yeni hesap oluştur"
       footer={
         <>

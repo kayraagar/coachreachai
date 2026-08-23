@@ -1,4 +1,4 @@
-export const metadata = { title: "Çevrimdışı — YKS Koçluk" };
+export const metadata = { title: "Çevrimdışı — CoachReachAI" };
 
 export default function OfflinePage() {
   return (

@@ -27,7 +27,7 @@ function getServerSnapshot(): Theme {
 function setTheme(next: Theme) {
   document.documentElement.dataset.theme = next;
   try {
-    localStorage.setItem("yks-theme", next);
+    localStorage.setItem("cra-theme", next);
   } catch {
     /* gizli sekme — sessizce geç */
   }

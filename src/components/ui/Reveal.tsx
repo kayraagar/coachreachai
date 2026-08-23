@@ -33,8 +33,13 @@ export function PageHeader({
     <Reveal as="header" className="flex flex-wrap items-end justify-between gap-3">
       <div>
         <h1 className="page-title">{title}</h1>
+        <span
+          aria-hidden
+          className="mt-2 block h-[3px] w-10 rounded-full"
+          style={{ background: "linear-gradient(90deg, var(--accent), var(--series-3))" }}
+        />
         {subtitle && (
-          <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
+          <p className="mt-2.5 text-sm" style={{ color: "var(--text-secondary)" }}>
             {subtitle}
           </p>
         )}
