@@ -4,6 +4,7 @@ import { AppShell } from "@/components/ui/AppShell";
 import type { NavItem } from "@/components/ui/SideNav";
 import { PresenceProvider } from "@/components/realtime/PresenceProvider";
 import { RealtimeRefresh } from "@/components/realtime/RealtimeRefresh";
+import { InviteCodeCard } from "@/components/ui/InviteCodeCard";
 
 const ITEMS: NavItem[] = [{ href: "/koc", label: "Öğrencilerim", icon: "users", exact: true }];
 
@@ -30,7 +31,7 @@ export default async function KocLayout({ children }: { children: React.ReactNod
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role, full_name, email")
+    .select("role, full_name, email, invite_code")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -47,15 +48,7 @@ export default async function KocLayout({ children }: { children: React.ReactNod
         roleLabel="Koç"
         userId={user.id}
         aside={
-          <div className="rounded-xl p-3 text-xs" style={{ background: "var(--surface-2)" }}>
-            <p style={{ color: "var(--text-muted)" }}>Koç kodun</p>
-            <p className="mt-0.5 break-all font-medium" style={{ color: "var(--text-primary)" }}>
-              {profile?.email}
-            </p>
-            <p className="mt-1.5 leading-relaxed" style={{ color: "var(--text-muted)" }}>
-              Öğrencilerin kayıt olurken bu adresi girmeli.
-            </p>
-          </div>
+          <InviteCodeCard code={profile?.invite_code ?? null} email={profile?.email ?? ""} />
         }
       >
         {children}

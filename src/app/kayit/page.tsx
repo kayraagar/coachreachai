@@ -60,14 +60,18 @@ export default function KayitPage() {
         />
 
         {role === "student" && (
-          <div className="animate-slide-down">
+          <div className="animate-slide-down flex flex-col gap-1.5">
             <AuthField
-              label="Koçunun e-postası (koç kodu)"
+              label="Koç kodu"
               name="coach_code"
-              type="email"
+              type="text"
               autoComplete="off"
-              placeholder="kocun@ornek.com"
+              placeholder="ÖRN. K7M2QP"
             />
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+              Koçunun panelinde gördüğü 6 haneli kod. Dilersen koçunun e-posta
+              adresini de yazabilirsin.
+            </p>
           </div>
         )}
 

@@ -22,6 +22,7 @@ import { ActionChecklist } from "@/components/session/ActionChecklist";
 import { IconArrowRight, IconTarget } from "@/components/ui/Icons";
 import { formatDuration, formatShortDate } from "@/lib/labels";
 import { StudyTimer } from "@/components/realtime/StudyTimer";
+import { LinkCoachForm } from "@/components/forms/LinkCoachForm";
 import type { SessionAction } from "@/lib/database.types";
 
 export default async function OgrenciDashboard() {
@@ -46,6 +47,7 @@ export default async function OgrenciDashboard() {
     recentSessions,
     subjectsRes,
     topicsRes,
+    profileRes,
   ] = await Promise.all([
       getDailyQuestionTrend(studentId, 14),
       getSubjectBreakdown(studentId, 30),
@@ -68,6 +70,7 @@ export default async function OgrenciDashboard() {
       getRecentStudySessions(studentId, 5),
       supabase.from("subjects").select("*").order("sort_order"),
       supabase.from("topics").select("*").order("sort_order"),
+      supabase.from("profiles").select("coach_id").eq("id", studentId).maybeSingle(),
     ]);
 
   const today = trend[trend.length - 1]?.y ?? 0;
@@ -121,6 +124,8 @@ export default async function OgrenciDashboard() {
           )}
         </Reveal>
       )}
+
+      {!profileRes.data?.coach_id && <LinkCoachForm />}
 
       <StudyTimer
         open={openSession}

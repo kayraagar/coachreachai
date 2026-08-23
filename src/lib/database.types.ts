@@ -18,6 +18,7 @@ export interface Profile {
   full_name: string;
   email: string;
   coach_id: string | null;
+  invite_code: string | null;
   target_exam_date: string | null;
   created_at: string;
 }
