@@ -1,0 +1,29 @@
+# bağımlılıklar
+/node_modules
+/.pnp
+.pnp.*
+
+# next
+/.next/
+/out/
+next-env.d.ts
+
+# üretim
+/build
+
+# ortam değişkenleri
+.env
+.env*.local
+
+# günlükler
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# işletim sistemi
+.DS_Store
+*.pem
+
+# vercel / typescript
+.vercel
+*.tsbuildinfo
