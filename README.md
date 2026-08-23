@@ -26,9 +26,13 @@ npm run dev
 
 ### Veritabanı
 
-`supabase/schema.sql` dosyasının tamamını Supabase SQL Editor'de çalıştır. Dosya
-idempotenttir: tablolar, RLS politikaları, seed katalog ve realtime yayını tek
-seferde kurulur. Şema güncellendiğinde dosyayı yeniden çalıştırmak yeterlidir.
+**Sıfırdan kurulum:** `supabase/schema.sql` dosyasının tamamını Supabase SQL
+Editor'de çalıştır. Dosya idempotenttir (politikalar `drop policy if exists` ile
+yeniden oluşturulur), istediğin kadar tekrar çalıştırabilirsin.
+
+**Mevcut bir veritabanını güncelleme:** temel şema zaten kuruluysa yalnızca
+`supabase/migrations/001_weekly_sessions_and_realtime.sql` dosyasını çalıştır.
+Görüşme ajandası, rutinler, canlı çalışma oturumu ve realtime yayını bu dosyada.
 
 Realtime'ın çalışması için Supabase Dashboard > Database > Replication bölümünde
 `supabase_realtime` yayınının etkin olması gerekir (SQL dosyası tabloları bu

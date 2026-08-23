@@ -3,6 +3,12 @@
 -- ============================================================================
 -- Bu dosyayı Supabase projendeki SQL Editor'e yapıştırıp çalıştır.
 -- Sıra önemlidir: extension -> tablolar -> fonksiyonlar/trigger -> RLS.
+--
+-- IDEMPOTENT: dosyanın tamamı istediğin kadar tekrar çalıştırılabilir; mevcut
+-- veri korunur, politikalar yeniden oluşturulur.
+--
+-- Şema zaten kuruluysa ve yalnızca yeni bölümleri (8-12) eklemek istiyorsan
+-- supabase/migrations/001_weekly_sessions_and_realtime.sql dosyasını çalıştır.
 -- ============================================================================
 
 -- ---------------------------------------------------------------------------
@@ -202,53 +208,65 @@ $$;
 
 -- profiles: herkes kendi profilini görür/günceller; koç kendine bağlı
 -- öğrencilerin profillerini de görebilir.
+drop policy if exists "profiles_select_own_or_coached" on public.profiles;
 create policy "profiles_select_own_or_coached"
   on public.profiles for select
   using (id = auth.uid() or coach_id = auth.uid());
 
+drop policy if exists "profiles_update_own" on public.profiles;
 create policy "profiles_update_own"
   on public.profiles for update
   using (id = auth.uid());
 
 -- subjects/topics: herkese açık okuma (katalog verisi), yazma yok (seed ile dolar).
+drop policy if exists "subjects_select_all" on public.subjects;
 create policy "subjects_select_all" on public.subjects for select using (true);
+drop policy if exists "topics_select_all" on public.topics;
 create policy "topics_select_all"   on public.topics   for select using (true);
 
 -- daily_logs: öğrenci kendi kaydını CRUD yapar; koç sadece okur.
+drop policy if exists "daily_logs_student_all" on public.daily_logs;
 create policy "daily_logs_student_all"
   on public.daily_logs for all
   using (student_id = auth.uid())
   with check (student_id = auth.uid());
 
+drop policy if exists "daily_logs_coach_select" on public.daily_logs;
 create policy "daily_logs_coach_select"
   on public.daily_logs for select
   using (public.is_coach_of(student_id));
 
 -- exams / exam_results: aynı desen.
+drop policy if exists "exams_student_all" on public.exams;
 create policy "exams_student_all"
   on public.exams for all
   using (student_id = auth.uid())
   with check (student_id = auth.uid());
 
+drop policy if exists "exams_coach_select" on public.exams;
 create policy "exams_coach_select"
   on public.exams for select
   using (public.is_coach_of(student_id));
 
+drop policy if exists "exam_results_student_all" on public.exam_results;
 create policy "exam_results_student_all"
   on public.exam_results for all
   using (exists (select 1 from public.exams e where e.id = exam_id and e.student_id = auth.uid()))
   with check (exists (select 1 from public.exams e where e.id = exam_id and e.student_id = auth.uid()));
 
+drop policy if exists "exam_results_coach_select" on public.exam_results;
 create policy "exam_results_coach_select"
   on public.exam_results for select
   using (exists (select 1 from public.exams e where e.id = exam_id and public.is_coach_of(e.student_id)));
 
 -- goals: öğrenci kendi hedeflerini görür; koç hem görür hem oluşturur/günceller
 -- (öğrenciye hedef atamak koçun işi).
+drop policy if exists "goals_student_select" on public.goals;
 create policy "goals_student_select"
   on public.goals for select
   using (student_id = auth.uid());
 
+drop policy if exists "goals_coach_all" on public.goals;
 create policy "goals_coach_all"
   on public.goals for all
   using (public.is_coach_of(student_id) or created_by = auth.uid())
@@ -256,25 +274,30 @@ create policy "goals_coach_all"
 
 -- study_plan_items: öğrenci kendi programını CRUD yapar; koç okuyabilir ve
 -- öğrenciye program atayabilir (insert/update).
+drop policy if exists "study_plan_student_all" on public.study_plan_items;
 create policy "study_plan_student_all"
   on public.study_plan_items for all
   using (student_id = auth.uid())
   with check (student_id = auth.uid());
 
+drop policy if exists "study_plan_coach_select" on public.study_plan_items;
 create policy "study_plan_coach_select"
   on public.study_plan_items for select
   using (public.is_coach_of(student_id));
 
+drop policy if exists "study_plan_coach_write" on public.study_plan_items;
 create policy "study_plan_coach_write"
   on public.study_plan_items for insert
   with check (public.is_coach_of(student_id));
 
 -- notes: hem öğrenci hem koç kendi yazdığını ekleyebilir; ilgili öğrencinin
 -- notlarını her iki taraf da görebilir.
+drop policy if exists "notes_select_own_or_coached" on public.notes;
 create policy "notes_select_own_or_coached"
   on public.notes for select
   using (student_id = auth.uid() or public.is_coach_of(student_id));
 
+drop policy if exists "notes_insert_own_or_coach" on public.notes;
 create policy "notes_insert_own_or_coach"
   on public.notes for insert
   with check (
