@@ -4,10 +4,12 @@ import { useActionState, useState } from "react";
 import Link from "next/link";
 import { signUp, type AuthResult } from "@/lib/actions/auth";
 import { AuthShell, AuthField } from "@/components/ui/AuthShell";
+import { TRACKS, TRACK_CONFIG, type Track } from "@/lib/track";
 
 export default function KayitPage() {
   const [state, formAction, pending] = useActionState<AuthResult, FormData>(signUp, undefined);
   const [role, setRole] = useState<"student" | "coach">("student");
+  const [track, setTrack] = useState<Track>("YKS");
 
   return (
     <AuthShell
@@ -59,19 +61,52 @@ export default function KayitPage() {
         />
 
         {role === "student" && (
-          <div className="animate-slide-down flex flex-col gap-1.5">
-            <AuthField
-              label="Koç kodu"
-              name="coach_code"
-              type="text"
-              autoComplete="off"
-              placeholder="ÖRN. K7M2QP"
-            />
-            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-              Koçunun panelinde gördüğü 6 haneli kod. Dilersen koçunun e-posta
-              adresini de yazabilirsin.
-            </p>
-          </div>
+          <>
+            {/* hangi sınava hazırlanıyor — panel, ders kataloğu ve net
+                formülü bu seçime göre kurulur */}
+            <div className="animate-slide-down flex flex-col gap-1.5">
+              <span className="label">Hazırlandığın sınav</span>
+              <div
+                className="flex gap-1 rounded-xl border p-1 text-sm"
+                style={{ borderColor: "var(--border-hairline)", background: "var(--surface-2)" }}
+              >
+                {TRACKS.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setTrack(t)}
+                    aria-pressed={track === t}
+                    className="flex-1 rounded-lg py-1.5 font-medium transition-all duration-200"
+                    style={{
+                      background: track === t ? "var(--accent)" : "transparent",
+                      color: track === t ? "var(--accent-contrast)" : "var(--text-secondary)",
+                      boxShadow: track === t ? "var(--shadow-sm)" : "none",
+                    }}
+                  >
+                    {TRACK_CONFIG[t].label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                {TRACK_CONFIG[track].hint}
+              </p>
+            </div>
+            <input type="hidden" name="track" value={track} />
+
+            <div className="animate-slide-down flex flex-col gap-1.5">
+              <AuthField
+                label="Koç kodu"
+                name="coach_code"
+                type="text"
+                autoComplete="off"
+                placeholder="ÖRN. K7M2QP"
+              />
+              <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                Koçunun panelinde gördüğü 6 haneli kod. Dilersen koçunun e-posta
+                adresini de yazabilirsin.
+              </p>
+            </div>
+          </>
         )}
 
         {state?.error && (

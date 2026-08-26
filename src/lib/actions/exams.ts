@@ -3,6 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { FormResult } from "@/lib/actions/logs";
+import type { ExamType } from "@/lib/database.types";
+import { getStudentTrack } from "@/lib/queries";
+import { trackConfig } from "@/lib/track";
 
 export async function addExam(_prev: FormResult, formData: FormData): Promise<FormResult> {
   const supabase = await createClient();
@@ -13,15 +16,23 @@ export async function addExam(_prev: FormResult, formData: FormData): Promise<Fo
 
   const name = String(formData.get("name") || "").trim();
   const exam_date = String(formData.get("exam_date") || "");
-  const exam_type = String(formData.get("exam_type") || "") as "TYT" | "AYT" | "Branş";
+  const exam_type = String(formData.get("exam_type") || "");
 
   if (!name || !exam_date || !exam_type) {
     return { error: "Sınav adı, tarih ve tür zorunlu." };
   }
 
+  // Deneme türü ve net formülü öğrencinin sınav koluna bağlıdır: YKS'de
+  // 4 yanlış, LGS'de 3 yanlış 1 doğruyu götürür.
+  const config = trackConfig(await getStudentTrack(user.id));
+
+  if (!config.examTypes.some((t) => t.value === exam_type)) {
+    return { error: `Bu deneme türü ${config.label} için geçerli değil.` };
+  }
+
   const { data: exam, error } = await supabase
     .from("exams")
-    .insert({ student_id: user.id, name, exam_date, exam_type })
+    .insert({ student_id: user.id, name, exam_date, exam_type: exam_type as ExamType })
     .select("id")
     .single();
 
@@ -40,6 +51,7 @@ export async function addExam(_prev: FormResult, formData: FormData): Promise<Fo
       correct_count: Number(corrects[i] || 0),
       wrong_count: Number(wrongs[i] || 0),
       blank_count: Number(blanks[i] || 0),
+      wrong_penalty: config.wrongPenalty,
     }))
     .filter((r) => r.subject_id && (r.correct_count || r.wrong_count || r.blank_count));
 

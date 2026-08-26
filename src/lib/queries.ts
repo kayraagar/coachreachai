@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { rel } from "@/lib/rel";
+import { asTrack, trackConfig, type NetSection, type Track, type TrackConfig } from "@/lib/track";
 import {
   subDays,
   format,
@@ -7,6 +8,7 @@ import {
   startOfWeek,
   endOfWeek,
   getISOWeek,
+  addDays,
 } from "date-fns";
 
 type SubjectRef = { name: string } | null;
@@ -19,10 +21,47 @@ type GoalRow = {
   subjects: SubjectRef | SubjectRef[];
 };
 
-export async function getSubjects() {
+/** Bir öğrencinin sınav kolu; profil okunamazsa güvenli varsayılan YKS. */
+export async function getStudentTrack(studentId: string): Promise<Track> {
   const supabase = await createClient();
-  const { data } = await supabase.from("subjects").select("*").order("sort_order");
+  const { data } = await supabase
+    .from("profiles")
+    .select("track")
+    .eq("id", studentId)
+    .maybeSingle();
+  return asTrack(data?.track);
+}
+
+/** Ders kataloğu — yalnızca ilgili sınav koluna ait dersler. */
+export async function getSubjects(track: Track) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("subjects")
+    .select("*")
+    .eq("track", track)
+    .order("sort_order");
   return data ?? [];
+}
+
+/**
+ * Ders + konu kataloğunu birlikte getirir. Konular ders üzerinden kola
+ * bağlı olduğu için, kolun dersleri süzüldükten sonra onların konuları alınır.
+ */
+export async function getCatalog(track: Track) {
+  const supabase = await createClient();
+  const subjects = await getSubjects(track);
+  if (subjects.length === 0) return { subjects, topics: [] };
+
+  const { data: topics } = await supabase
+    .from("topics")
+    .select("*")
+    .in(
+      "subject_id",
+      subjects.map((s) => s.id)
+    )
+    .order("sort_order");
+
+  return { subjects, topics: topics ?? [] };
 }
 
 export async function getTopics(subjectId: string) {
@@ -89,34 +128,54 @@ export async function getSubjectBreakdown(studentId: string, days = 30) {
   );
 }
 
-/** Deneme sınavı toplam net trendi (TYT/AYT ayrı ayrı). */
-export async function getExamNetTrend(studentId: string, examType: "TYT" | "AYT") {
+/**
+ * Bir bölümün deneme netlerini denemelere göre toplar.
+ *
+ * `section.categories` doluysa yalnızca o kategorideki derslerin sonuçları
+ * sayılır — LGS'de tek bir 90 soruluk deneme hem sözel hem sayısal netini
+ * taşıdığı için bölüm kırılımı bu şekilde çıkarılır. YKS'de kategori süzgeci
+ * yoktur; denemenin bütün ders sonuçları toplanır (mevcut davranış).
+ */
+async function netByExam(studentId: string, section: NetSection) {
   const supabase = await createClient();
   const { data: exams } = await supabase
     .from("exams")
-    .select("id, exam_date, name")
+    .select("id, exam_date, name, exam_type")
     .eq("student_id", studentId)
-    .eq("exam_type", examType)
+    .in("exam_type", section.examTypes)
     .order("exam_date");
 
   if (!exams || exams.length === 0) return [];
 
   const { data: results } = await supabase
     .from("exam_results")
-    .select("exam_id, net")
+    .select("exam_id, net, subjects(category)")
     .in(
       "exam_id",
       exams.map((e) => e.id)
     );
 
-  const netByExam = new Map<string, number>();
+  const totals = new Map<string, number>();
   (results ?? []).forEach((r) => {
-    netByExam.set(r.exam_id, (netByExam.get(r.exam_id) ?? 0) + Number(r.net));
+    if (section.categories) {
+      const category = rel(r.subjects)?.category;
+      if (!category || !section.categories.includes(category)) return;
+    }
+    totals.set(r.exam_id, (totals.get(r.exam_id) ?? 0) + Number(r.net));
   });
 
   return exams.map((e) => ({
+    ...e,
+    net: Math.round((totals.get(e.id) ?? 0) * 10) / 10,
+  }));
+}
+
+/** Deneme sınavı net trendi — grafik noktaları. */
+export async function getExamNetTrend(studentId: string, section: NetSection) {
+  const exams = await netByExam(studentId, section);
+  return exams.map((e) => ({
     x: format(new Date(e.exam_date), "d MMM"),
-    y: Math.round((netByExam.get(e.id) ?? 0) * 10) / 10,
+    y: e.net,
   }));
 }
 
@@ -251,6 +310,43 @@ export function weekRange(offsetWeeks = 0) {
     /** YKS sezonunun kaçıncı haftası olduğu değil, ISO hafta numarası. */
     weekNo: getISOWeek(start),
   };
+}
+
+/** Pazartesi başlangıçlı hafta başını yyyy-MM-dd olarak verir. */
+export function weekStartOf(date: Date | string = new Date()) {
+  const base = typeof date === "string" ? new Date(date + "T00:00:00") : date;
+  const safe = Number.isNaN(base.getTime()) ? new Date() : base;
+  return format(startOfWeek(safe, { weekStartsOn: 1 }), "yyyy-MM-dd");
+}
+
+export type AgendaItem = {
+  id: string;
+  plan_date: string;
+  title: string;
+  planned_minutes: number | null;
+  completed: boolean;
+  sort_order: number;
+};
+
+/**
+ * Haftalık ajandanın bir haftalık içeriği.
+ * weekStart pazartesi olmalı; aralık o günden itibaren 7 gündür.
+ */
+export async function getWeekPlan(studentId: string, weekStart: string): Promise<AgendaItem[]> {
+  const supabase = await createClient();
+  const start = new Date(weekStart + "T00:00:00");
+  const end = format(addDays(start, 6), "yyyy-MM-dd");
+
+  const { data } = await supabase
+    .from("study_plan_items")
+    .select("id, plan_date, title, planned_minutes, completed, sort_order")
+    .eq("student_id", studentId)
+    .gte("plan_date", weekStart)
+    .lte("plan_date", end)
+    .order("plan_date")
+    .order("sort_order");
+
+  return data ?? [];
 }
 
 export type DayCell = {
@@ -408,51 +504,73 @@ export async function getRoutineSummary(studentId: string, days = 7) {
   };
 }
 
-/** Hafta içinde girilen denemelerin net ortalaması (TYT / AYT). */
-export async function getWeekExamNets(studentId: string, start: string, end: string) {
-  const supabase = await createClient();
-  const { data: exams } = await supabase
-    .from("exams")
-    .select("id, exam_type, name, exam_date")
-    .eq("student_id", studentId)
-    .gte("exam_date", start)
-    .lte("exam_date", end);
+/**
+ * Hafta içinde girilen denemelerin bölüm bazlı net ortalaması.
+ * YKS'de TYT / AYT, LGS'de sayısal / sözel karşılığı gelir.
+ */
+export async function getWeekExamNets(
+  studentId: string,
+  start: string,
+  end: string,
+  config: TrackConfig
+) {
+  const inWeek = <T extends { exam_date: string }>(rows: T[]) =>
+    rows.filter((e) => e.exam_date >= start && e.exam_date <= end);
 
-  if (!exams || exams.length === 0) return { tyt: null, ayt: null, exams: [] };
+  const [primaryExams, secondaryExams] = await Promise.all([
+    netByExam(studentId, config.primary),
+    netByExam(studentId, config.secondary),
+  ]);
 
-  const { data: results } = await supabase
-    .from("exam_results")
-    .select("exam_id, net")
-    .in("exam_id", exams.map((e) => e.id));
-
-  const netByExam = new Map<string, number>();
-  (results ?? []).forEach((r) => {
-    netByExam.set(r.exam_id, (netByExam.get(r.exam_id) ?? 0) + Number(r.net));
-  });
-
-  const withNet = exams.map((e) => ({
-    ...e,
-    net: Math.round((netByExam.get(e.id) ?? 0) * 10) / 10,
-  }));
-
-  const avg = (type: string) => {
-    const list = withNet.filter((e) => e.exam_type === type);
-    if (list.length === 0) return null;
-    return Math.round((list.reduce((s, e) => s + e.net, 0) / list.length) * 10) / 10;
+  const avg = (rows: { net: number }[]) => {
+    if (rows.length === 0) return null;
+    return Math.round((rows.reduce((s, e) => s + e.net, 0) / rows.length) * 10) / 10;
   };
 
-  return { tyt: avg("TYT"), ayt: avg("AYT"), exams: withNet };
+  const primaryWeek = inWeek(primaryExams);
+  const secondaryWeek = inWeek(secondaryExams);
+
+  // Aynı deneme her iki bölüme de girebilir (LGS tam denemesi); listede bir kez
+  // görünmesi için id'ye göre tekilleştirilir.
+  const seen = new Set<string>();
+  const exams = [...primaryWeek, ...secondaryWeek].filter((e) => {
+    if (seen.has(e.id)) return false;
+    seen.add(e.id);
+    return true;
+  });
+
+  return {
+    primary: avg(primaryWeek),
+    secondary: avg(secondaryWeek),
+    exams,
+  };
 }
 
-/** Görüşme formunu ön-dolduran özet paket. */
-export async function getSessionPrefill(studentId: string, offsetWeeks = 1) {
+/**
+ * Görüşme formunu ön-dolduran özet paket.
+ *
+ * `planAnchor` — 7. maddedeki haftalık ajandanın hangi haftayı planladığını
+ * belirler. Yeni görüşmede bugünün haftası, mevcut bir görüşme düzenlenirken
+ * o görüşmenin tarihini içeren hafta kullanılır. (Değerlendirilen hafta
+ * `offsetWeeks` ile geriye bakar; planlanan hafta ise güncel olandır.)
+ */
+export async function getSessionPrefill(
+  studentId: string,
+  offsetWeeks = 1,
+  planAnchor?: string
+) {
+  const track = await getStudentTrack(studentId);
+  const config = trackConfig(track);
+  const planWeekStart = weekStartOf(planAnchor ?? new Date());
+
   const week = await getWeeklyBreakdown(studentId, offsetWeeks);
-  const [nets, weak, routines] = await Promise.all([
-    getWeekExamNets(studentId, week.start, week.end),
+  const [nets, weak, routines, planItems] = await Promise.all([
+    getWeekExamNets(studentId, week.start, week.end, config),
     getWeakTopics(studentId, 14),
     getRoutineSummary(studentId, 7),
+    getWeekPlan(studentId, planWeekStart),
   ]);
-  return { week, nets, weak, routines };
+  return { week, nets, weak, routines, track, planWeekStart, planItems };
 }
 
 /** Bir öğrencinin görüşme listesi (koç: hepsi, öğrenci: paylaşılanlar). */

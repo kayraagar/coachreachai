@@ -1,5 +1,5 @@
 -- ============================================================================
--- YKS Koçluk — Veritabanı Şeması (Supabase / Postgres)
+-- CoachReachAI — Veritabanı Şeması (Supabase / Postgres)
 -- ============================================================================
 -- Bu dosyayı Supabase projendeki SQL Editor'e yapıştırıp çalıştır.
 -- Sıra önemlidir: extension -> tablolar -> fonksiyonlar/trigger -> RLS.
@@ -9,6 +9,15 @@
 --
 -- Şema zaten kuruluysa ve yalnızca yeni bölümleri (8-12) eklemek istiyorsan
 -- supabase/migrations/001_weekly_sessions_and_realtime.sql dosyasını çalıştır.
+--
+-- ÖNEMLİ — çalıştırma sırası:
+--   1) bu dosya (schema.sql)                     → YKS tabanı
+--   2) migrations/002_coach_invite_codes.sql     → koç davet kodu
+--   3) migrations/003_lgs_track.sql              → LGS sınav kolu
+--
+-- Bu dosya yalnızca YKS (TYT/AYT) kataloğunu kurar. LGS desteği — profiles.track,
+-- LGS ders kataloğu, LGS deneme türleri ve 3 yanlış = 1 doğru net formülü —
+-- 003 numaralı migration ile gelir; sıfırdan kurulumda o dosya da çalıştırılmalı.
 -- ============================================================================
 
 -- ---------------------------------------------------------------------------

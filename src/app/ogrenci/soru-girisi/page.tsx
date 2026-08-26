@@ -4,6 +4,7 @@ import { DailyLogForm } from "@/components/forms/DailyLogForm";
 import { deleteDailyLog } from "@/lib/actions/logs";
 import { PageHeader, Panel, EmptyState } from "@/components/ui/Reveal";
 import { formatShortDate } from "@/lib/labels";
+import { getCatalog, getStudentTrack } from "@/lib/queries";
 
 export default async function SoruGirisiPage() {
   const supabase = await createClient();
@@ -11,9 +12,10 @@ export default async function SoruGirisiPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [{ data: subjects }, { data: topics }, { data: logs }] = await Promise.all([
-    supabase.from("subjects").select("*").order("sort_order"),
-    supabase.from("topics").select("*").order("sort_order"),
+  const track = await getStudentTrack(user!.id);
+
+  const [{ subjects, topics }, { data: logs }] = await Promise.all([
+    getCatalog(track),
     supabase
       .from("daily_logs")
       .select("id, log_date, correct_count, wrong_count, blank_count, duration_minutes, subjects(name), topics(name)")
@@ -26,7 +28,7 @@ export default async function SoruGirisiPage() {
     <div className="flex flex-col gap-6">
       <PageHeader title="Soru Girişi" subtitle="Çözdüğün soruları ders ve konu bazında kaydet" />
 
-      <DailyLogForm subjects={subjects ?? []} topics={topics ?? []} />
+      <DailyLogForm subjects={subjects} topics={topics} />
 
       <Panel title="Son kayıtlar" delay={80} padded={false}>
         <div className="overflow-x-auto">

@@ -7,6 +7,7 @@ import { IconArrowRight } from "@/components/ui/Icons";
 import { PresenceDot } from "@/components/realtime/PresenceProvider";
 import { ElapsedShort } from "@/components/realtime/Elapsed";
 import { daysSince, formatDuration, formatShortDate } from "@/lib/labels";
+import { asTrack, trackConfig } from "@/lib/track";
 
 export default async function KocOgrencilerPage() {
   const supabase = await createClient();
@@ -16,7 +17,7 @@ export default async function KocOgrencilerPage() {
 
   const { data: students } = await supabase
     .from("profiles")
-    .select("id, full_name, email, target_exam_date")
+    .select("id, full_name, email, target_exam_date, track")
     .eq("coach_id", user!.id)
     .order("full_name");
 
@@ -113,6 +114,7 @@ export default async function KocOgrencilerPage() {
                   )}
 
                   <div className="flex flex-wrap gap-2">
+                    <span className="chip chip-accent">{trackConfig(asTrack(s.track)).label}</span>
                     <span className={s.week.totalQuestions === 0 ? "chip chip-bad" : "chip"}>
                       {s.week.totalQuestions} soru / hafta
                     </span>

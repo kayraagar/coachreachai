@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { FormResult } from "@/lib/actions/types";
+import { syncWeekPlan } from "@/lib/actions/plan";
+import { parseAgendaPayload } from "@/lib/agenda";
 
 const TEXT_FIELDS = [
   "adherence_note",
@@ -155,10 +157,19 @@ export async function saveWeeklySession(
 
   await syncActions(id!, studentId, String(formData.get("actions_raw") ?? ""));
 
+  // 7. maddedeki haftalık ajanda — öğrencinin Program sayfasıyla aynı tabloya yazar.
+  const planWeek = String(formData.get("week_start") || "");
+  const planRows = parseAgendaPayload(formData.get("plan_json"));
+  if (planWeek && planRows !== null) {
+    const { error } = await syncWeekPlan(studentId, planWeek, planRows);
+    if (error) return { error: "Görüşme kaydedildi ama ajanda yazılamadı: " + error };
+  }
+
   revalidatePath(`/koc/${studentId}`);
   revalidatePath(`/koc/${studentId}/gorusmeler`);
   revalidatePath("/ogrenci");
   revalidatePath("/ogrenci/gorusmeler");
+  revalidatePath("/ogrenci/program");
   redirect(`/koc/${studentId}/gorusmeler/${id}`);
 }
 

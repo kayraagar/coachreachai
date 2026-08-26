@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/ui/Reveal";
 import { buildPrefill } from "@/lib/session-prefill";
 import { setSessionStatus, deleteWeeklySession } from "@/lib/actions/sessions";
 import type { SessionAction, WeeklySession } from "@/lib/database.types";
+import { asTrack } from "@/lib/track";
 
 export default async function KocGorusmeDetayPage({
   params,
@@ -21,7 +22,11 @@ export default async function KocGorusmeDetayPage({
   const supabase = await createClient();
 
   const [{ data: student }, { session, actions }] = await Promise.all([
-    supabase.from("profiles").select("id, full_name, email").eq("id", studentId).maybeSingle(),
+    supabase
+      .from("profiles")
+      .select("id, full_name, email, track")
+      .eq("id", studentId)
+      .maybeSingle(),
     getWeeklySession(sessionId),
   ]);
 
@@ -29,9 +34,11 @@ export default async function KocGorusmeDetayPage({
 
   const editing = duzenle === "1";
   const studentName = student.full_name || student.email;
+  const track = asTrack(student.track);
 
   if (editing) {
-    const raw = await getSessionPrefill(studentId, 1);
+    // Ajanda, görüşmenin tarihini içeren haftayı planlar.
+    const raw = await getSessionPrefill(studentId, 1, session.meeting_date);
     return (
       <div className="flex flex-col gap-6">
         <PageHeader
@@ -83,7 +90,11 @@ export default async function KocGorusmeDetayPage({
         }
       />
 
-      <SessionView session={session as WeeklySession} actions={actions as SessionAction[]} />
+      <SessionView
+        session={session as WeeklySession}
+        actions={actions as SessionAction[]}
+        track={track}
+      />
 
       <form
         action={deleteWeeklySession.bind(null, sessionId, studentId)}

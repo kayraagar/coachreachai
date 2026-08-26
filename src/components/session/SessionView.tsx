@@ -2,18 +2,24 @@ import type { SessionAction, WeeklySession } from "@/lib/database.types";
 import { MOOD_LABEL, MOOD_TONE, ROUTINE_LABEL, ROUTINE_TONE, formatDate, formatDuration } from "@/lib/labels";
 import { Reveal } from "@/components/ui/Reveal";
 import { ActionChecklist } from "./ActionChecklist";
+import { trackConfig, type Track } from "@/lib/track";
 
 /** Haftalık Görüşme Ajandası — 8 maddelik okuma görünümü.
  *  Koç detayında ve öğrenci panelinde aynı bileşen kullanılır. */
 export function SessionView({
   session,
   actions,
+  track,
   canToggleActions = false,
 }: {
   session: WeeklySession;
   actions: SessionAction[];
+  /** Net alanlarının etiketi öğrencinin sınav koluna göre değişir. */
+  track: Track;
   canToggleActions?: boolean;
 }) {
+  const config = trackConfig(track);
+
   return (
     <div className="flex flex-col gap-4">
       <Reveal as="section" className="card card-glow p-5">
@@ -71,8 +77,8 @@ export function SessionView({
       {/* 2 — Net ve performans analizi */}
       <Block no={2} title="Net ve Performans Analizi" delay={80}>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Metric label="TYT net" value={session.tyt_net ?? "—"} />
-          <Metric label="AYT net" value={session.ayt_net ?? "—"} />
+          <Metric label={config.primary.label} value={session[config.primary.key] ?? "—"} />
+          <Metric label={config.secondary.label} value={session[config.secondary.key] ?? "—"} />
         </div>
         <Text label="Genel net durumu" value={session.net_note} />
         <Text label="Ağırlıklı yanlış yapılan konular" value={session.weak_topics} />

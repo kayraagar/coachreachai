@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getWeeklySession } from "@/lib/queries";
+import { getWeeklySession, getStudentTrack } from "@/lib/queries";
 import { SessionView } from "@/components/session/SessionView";
 import { PageHeader } from "@/components/ui/Reveal";
 import type { WeeklySession, SessionAction } from "@/lib/database.types";
@@ -17,7 +17,10 @@ export default async function OgrenciGorusmeDetayPage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { session, actions } = await getWeeklySession(sessionId);
+  const [{ session, actions }, track] = await Promise.all([
+    getWeeklySession(sessionId),
+    getStudentTrack(user!.id),
+  ]);
 
   // RLS zaten paylaşılmamış kayıtları gizler; yine de açıkça doğrula.
   if (!session || session.student_id !== user!.id || session.status !== "shared") notFound();
@@ -36,6 +39,7 @@ export default async function OgrenciGorusmeDetayPage({
       <SessionView
         session={session as WeeklySession}
         actions={actions as SessionAction[]}
+        track={track}
         canToggleActions
       />
     </div>

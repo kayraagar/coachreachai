@@ -11,6 +11,8 @@ import {
   getOpenActions,
   getOpenStudySession,
   getRecentStudySessions,
+  getCatalog,
+  getStudentTrack,
 } from "@/lib/queries";
 import { LineChart } from "@/components/charts/LineChart";
 import { BarChart } from "@/components/charts/BarChart";
@@ -24,6 +26,7 @@ import { formatDuration, formatShortDate } from "@/lib/labels";
 import { StudyTimer } from "@/components/realtime/StudyTimer";
 import { LinkCoachForm } from "@/components/forms/LinkCoachForm";
 import type { SessionAction } from "@/lib/database.types";
+import { trackConfig } from "@/lib/track";
 
 export default async function OgrenciDashboard() {
   const supabase = await createClient();
@@ -32,11 +35,16 @@ export default async function OgrenciDashboard() {
   } = await supabase.auth.getUser();
   const studentId = user!.id;
 
+  // Panelin ders kataloğu, net başlıkları ve deneme türleri öğrencinin
+  // hazırlandığı sınava göre kurulur.
+  const track = await getStudentTrack(studentId);
+  const config = trackConfig(track);
+
   const [
     trend,
     breakdown,
-    tytNet,
-    aytNet,
+    primaryNet,
+    secondaryNet,
     goals,
     plan,
     week,
@@ -45,14 +53,13 @@ export default async function OgrenciDashboard() {
     lastSession,
     openSession,
     recentSessions,
-    subjectsRes,
-    topicsRes,
+    catalog,
     profileRes,
   ] = await Promise.all([
       getDailyQuestionTrend(studentId, 14),
       getSubjectBreakdown(studentId, 30),
-      getExamNetTrend(studentId, "TYT"),
-      getExamNetTrend(studentId, "AYT"),
+      getExamNetTrend(studentId, config.primary),
+      getExamNetTrend(studentId, config.secondary),
       getGoalsWithProgress(studentId),
       getPlanAdherence(studentId, 14),
       getWeeklyBreakdown(studentId, 0),
@@ -68,8 +75,7 @@ export default async function OgrenciDashboard() {
         .maybeSingle(),
       getOpenStudySession(studentId),
       getRecentStudySessions(studentId, 5),
-      supabase.from("subjects").select("*").order("sort_order"),
-      supabase.from("topics").select("*").order("sort_order"),
+      getCatalog(track),
       supabase.from("profiles").select("coach_id").eq("id", studentId).maybeSingle(),
     ]);
 
@@ -81,7 +87,7 @@ export default async function OgrenciDashboard() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Panelim"
-        subtitle="Haftalık görüşme ajandanla aynı başlıklar üzerinden ilerlemen"
+        subtitle={`${config.label} · haftalık görüşme ajandanla aynı başlıklar üzerinden ilerlemen`}
       />
 
       {/* --- bu haftanın odağı --- */}
@@ -127,11 +133,7 @@ export default async function OgrenciDashboard() {
 
       {!profileRes.data?.coach_id && <LinkCoachForm />}
 
-      <StudyTimer
-        open={openSession}
-        subjects={subjectsRes.data ?? []}
-        topics={topicsRes.data ?? []}
-      />
+      <StudyTimer open={openSession} subjects={catalog.subjects} topics={catalog.topics} />
 
       {/* --- özet kutuları --- */}
       <div className="flex flex-wrap gap-3">
@@ -216,11 +218,11 @@ export default async function OgrenciDashboard() {
       </Panel>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Panel title="TYT net trendi" delay={240}>
-          <LineChart series={[{ name: "TYT net", points: tytNet }]} decimals={1} />
+        <Panel title={`${config.primary.label} trendi`} delay={240}>
+          <LineChart series={[{ name: config.primary.label, points: primaryNet }]} decimals={1} />
         </Panel>
-        <Panel title="AYT net trendi" delay={280}>
-          <LineChart series={[{ name: "AYT net", points: aytNet }]} decimals={1} />
+        <Panel title={`${config.secondary.label} trendi`} delay={280}>
+          <LineChart series={[{ name: config.secondary.label, points: secondaryNet }]} decimals={1} />
         </Panel>
       </div>
 

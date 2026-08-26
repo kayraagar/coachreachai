@@ -12,6 +12,7 @@ import {
   getWeakTopics,
   getRoutineSummary,
   getOpenStudySession,
+  getSubjects,
 } from "@/lib/queries";
 import { LineChart } from "@/components/charts/LineChart";
 import { BarChart } from "@/components/charts/BarChart";
@@ -19,6 +20,7 @@ import { StatTile } from "@/components/charts/StatTile";
 import { ProgressBar, MiniMeter } from "@/components/charts/ProgressBar";
 import { WeekStrip } from "@/components/charts/WeekStrip";
 import { GoalForm } from "@/components/forms/GoalForm";
+import { TrackForm } from "@/components/forms/TrackForm";
 import { NoteForm } from "@/components/forms/NoteForm";
 import { deactivateGoal } from "@/lib/actions/goals";
 import { PageHeader, Panel, Reveal, EmptyState } from "@/components/ui/Reveal";
@@ -26,6 +28,7 @@ import { IconArrowRight, IconSpark } from "@/components/ui/Icons";
 import { PresenceDot } from "@/components/realtime/PresenceProvider";
 import { ElapsedShort } from "@/components/realtime/Elapsed";
 import { MOOD_LABEL, formatDate, formatDuration, formatShortDate } from "@/lib/labels";
+import { asTrack, trackConfig } from "@/lib/track";
 
 export default async function OgrenciDetayPage({
   params,
@@ -37,18 +40,23 @@ export default async function OgrenciDetayPage({
 
   const { data: student } = await supabase
     .from("profiles")
-    .select("id, full_name, email, target_exam_date")
+    .select("id, full_name, email, target_exam_date, track")
     .eq("id", studentId)
     .maybeSingle();
 
   if (!student) notFound();
 
+  // Koçun bir YKS bir LGS öğrencisi olabilir; panel daima bu öğrencinin
+  // sınav koluna göre çizilir.
+  const track = asTrack(student.track);
+  const config = trackConfig(track);
+
   const [
-    subjectsRes,
+    subjects,
     trend,
     breakdown,
-    tytNet,
-    aytNet,
+    primaryNet,
+    secondaryNet,
     goals,
     plan,
     week,
@@ -59,11 +67,11 @@ export default async function OgrenciDetayPage({
     sessionsRes,
     liveSession,
   ] = await Promise.all([
-    supabase.from("subjects").select("*").order("sort_order"),
+    getSubjects(track),
     getDailyQuestionTrend(studentId, 14),
     getSubjectBreakdown(studentId, 30),
-    getExamNetTrend(studentId, "TYT"),
-    getExamNetTrend(studentId, "AYT"),
+    getExamNetTrend(studentId, config.primary),
+    getExamNetTrend(studentId, config.secondary),
     getGoalsWithProgress(studentId),
     getPlanAdherence(studentId, 14),
     getWeeklyBreakdown(studentId, 0),
@@ -91,8 +99,8 @@ export default async function OgrenciDetayPage({
           ((week.totalQuestions - prevWeek.totalQuestions) / prevWeek.totalQuestions) * 100
         )
       : null;
-  const lastTytNet = tytNet[tytNet.length - 1]?.y;
-  const lastAytNet = aytNet[aytNet.length - 1]?.y;
+  const lastPrimaryNet = primaryNet[primaryNet.length - 1]?.y;
+  const lastSecondaryNet = secondaryNet[secondaryNet.length - 1]?.y;
   const sessions = sessionsRes.data ?? [];
 
   const summary = buildSummary({
@@ -101,8 +109,10 @@ export default async function OgrenciDetayPage({
     weekMinutes: week.totalMinutes,
     weekDelta,
     planPct: plan.pct,
-    lastTytNet,
-    lastAytNet,
+    lastPrimaryNet,
+    lastSecondaryNet,
+    primaryLabel: config.primary.label,
+    secondaryLabel: config.secondary.label,
     weakTop: weak[0],
     avgSleep: routines.avgSleep,
   });
@@ -111,7 +121,7 @@ export default async function OgrenciDetayPage({
     <div className="flex flex-col gap-6">
       <PageHeader
         title={student.full_name || student.email}
-        subtitle={`${student.email}${
+        subtitle={`${config.label} · ${student.email}${
           student.target_exam_date ? ` · Hedef sınav: ${formatDate(student.target_exam_date)}` : ""
         }`}
         actions={
@@ -191,14 +201,14 @@ export default async function OgrenciDetayPage({
           delay={120}
         />
         <StatTile
-          label="Son TYT net"
-          value={lastTytNet !== undefined ? lastTytNet : "—"}
+          label={`Son ${config.primary.label}`}
+          value={lastPrimaryNet !== undefined ? lastPrimaryNet : "—"}
           decimals={1}
           delay={180}
         />
         <StatTile
-          label="Son AYT net"
-          value={lastAytNet !== undefined ? lastAytNet : "—"}
+          label={`Son ${config.secondary.label}`}
+          value={lastSecondaryNet !== undefined ? lastSecondaryNet : "—"}
           decimals={1}
           delay={240}
         />
@@ -313,6 +323,15 @@ export default async function OgrenciDetayPage({
         )}
       </Panel>
 
+      {/* --- sınav kolu --- */}
+      <Panel
+        title="Hazırlandığı sınav"
+        hint="Ders kataloğu, deneme türleri ve net başlıkları bu seçime bağlı"
+        delay={185}
+      >
+        <TrackForm studentId={studentId} track={track} />
+      </Panel>
+
       {/* --- hedefler --- */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Panel title="Aktif hedefler" delay={200}>
@@ -339,7 +358,7 @@ export default async function OgrenciDetayPage({
         </Panel>
 
         <Reveal delay={240}>
-          <GoalForm studentId={studentId} subjects={subjectsRes.data ?? []} />
+          <GoalForm studentId={studentId} subjects={subjects} />
         </Reveal>
       </div>
 
@@ -352,11 +371,11 @@ export default async function OgrenciDetayPage({
       </Panel>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Panel title="TYT net trendi" delay={320}>
-          <LineChart series={[{ name: "TYT net", points: tytNet }]} decimals={1} />
+        <Panel title={`${config.primary.label} trendi`} delay={320}>
+          <LineChart series={[{ name: config.primary.label, points: primaryNet }]} decimals={1} />
         </Panel>
-        <Panel title="AYT net trendi" delay={350}>
-          <LineChart series={[{ name: "AYT net", points: aytNet }]} decimals={1} />
+        <Panel title={`${config.secondary.label} trendi`} delay={350}>
+          <LineChart series={[{ name: config.secondary.label, points: secondaryNet }]} decimals={1} />
         </Panel>
       </div>
 
@@ -419,8 +438,10 @@ function buildSummary({
   weekMinutes,
   weekDelta,
   planPct,
-  lastTytNet,
-  lastAytNet,
+  lastPrimaryNet,
+  lastSecondaryNet,
+  primaryLabel,
+  secondaryLabel,
   weakTop,
   avgSleep,
 }: {
@@ -429,8 +450,10 @@ function buildSummary({
   weekMinutes: number;
   weekDelta: number | null;
   planPct: number | null;
-  lastTytNet?: number;
-  lastAytNet?: number;
+  lastPrimaryNet?: number;
+  lastSecondaryNet?: number;
+  primaryLabel: string;
+  secondaryLabel: string;
   weakTop?: { subject: string; topic: string; errorPct: number };
   avgSleep: number | null;
 }) {
@@ -457,8 +480,12 @@ function buildSummary({
       `En çok zorlandığı yer ${weakTop.subject} · ${weakTop.topic} (%${weakTop.errorPct} hata).`
     );
   }
-  if (lastTytNet !== undefined) parts.push(`Son TYT denemesi ${lastTytNet.toFixed(1)} net.`);
-  if (lastAytNet !== undefined) parts.push(`Son AYT denemesi ${lastAytNet.toFixed(1)} net.`);
+  if (lastPrimaryNet !== undefined) {
+    parts.push(`Son denemede ${primaryLabel} ${lastPrimaryNet.toFixed(1)}.`);
+  }
+  if (lastSecondaryNet !== undefined) {
+    parts.push(`Son denemede ${secondaryLabel} ${lastSecondaryNet.toFixed(1)}.`);
+  }
   if (avgSleep !== null && avgSleep < 6.5) {
     parts.push(`Ortalama uykusu ${avgSleep} saat — rutin başlığında ele alınmalı.`);
   }

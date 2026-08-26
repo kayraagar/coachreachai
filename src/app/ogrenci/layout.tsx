@@ -10,7 +10,7 @@ const ITEMS: NavItem[] = [
   { href: "/ogrenci/gorusmeler", label: "Görüşme", icon: "chat" },
   { href: "/ogrenci/soru-girisi", label: "Soru", icon: "plus" },
   { href: "/ogrenci/denemeler", label: "Deneme", icon: "chart" },
-  { href: "/ogrenci/program", label: "Program", icon: "calendar" },
+  { href: "/ogrenci/program", label: "Ajanda", icon: "calendar" },
   { href: "/ogrenci/rutinler", label: "Rutin", icon: "heart" },
   { href: "/ogrenci/notlar", label: "Notlar", icon: "note" },
 ];

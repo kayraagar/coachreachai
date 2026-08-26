@@ -5,9 +5,18 @@ import { saveWeeklySession } from "@/lib/actions/sessions";
 import type { FormResult } from "@/lib/actions/types";
 import type { SessionAction, WeeklySession } from "@/lib/database.types";
 import { MOOD_OPTIONS, ROUTINE_OPTIONS, formatDuration } from "@/lib/labels";
+import { trackConfig, type Track } from "@/lib/track";
+import { WeeklyAgenda } from "@/components/plan/WeeklyAgenda";
+import { weekRangeLabel } from "@/lib/agenda";
+import type { AgendaItem } from "@/lib/queries";
 import { IconCheck, IconSpark } from "@/components/ui/Icons";
 
 export type Prefill = {
+  /** Öğrencinin sınav kolu — 2. maddedeki net alanlarının etiketini belirler. */
+  track: Track;
+  /** 7. maddedeki haftalık ajandanın planladığı hafta (pazartesi). */
+  planWeekStart: string;
+  planItems: AgendaItem[];
   weekNo: number;
   start: string;
   end: string;
@@ -15,8 +24,8 @@ export type Prefill = {
   totalMinutes: number;
   adherencePct: number | null;
   activeDays: number;
-  tytNet: number | null;
-  aytNet: number | null;
+  primaryNet: number | null;
+  secondaryNet: number | null;
   weakTopics: string;
   routineNote: string;
 };
@@ -39,6 +48,7 @@ export function SessionForm({
     undefined
   );
   const [open, setOpen] = useState<number | null>(1);
+  const config = trackConfig(prefill.track);
 
   const v = <K extends keyof WeeklySession>(key: K, fallback: string | number = "") =>
     session?.[key] !== undefined && session?.[key] !== null ? String(session[key]) : String(fallback);
@@ -150,31 +160,35 @@ export function SessionForm({
       <Section n={2} title="Net ve Performans Analizi" open={open === 2} onToggle={toggle}>
         <AutoHint
           items={[
-            prefill.tytNet === null ? "TYT denemesi yok" : `TYT ${prefill.tytNet} net`,
-            prefill.aytNet === null ? "AYT denemesi yok" : `AYT ${prefill.aytNet} net`,
+            prefill.primaryNet === null
+              ? `${config.primary.label} verisi yok`
+              : `${config.primary.label} ${prefill.primaryNet}`,
+            prefill.secondaryNet === null
+              ? `${config.secondary.label} verisi yok`
+              : `${config.secondary.label} ${prefill.secondaryNet}`,
           ]}
         />
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field label="TYT net">
+          <Field label={config.primary.label}>
             <input
               type="number"
               step="0.25"
-              name="tyt_net"
-              defaultValue={v("tyt_net", prefill.tytNet ?? "")}
+              name={config.primary.key}
+              defaultValue={v(config.primary.key, prefill.primaryNet ?? "")}
               className="field tabular"
             />
           </Field>
-          <Field label="AYT net">
+          <Field label={config.secondary.label}>
             <input
               type="number"
               step="0.25"
-              name="ayt_net"
-              defaultValue={v("ayt_net", prefill.aytNet ?? "")}
+              name={config.secondary.key}
+              defaultValue={v(config.secondary.key, prefill.secondaryNet ?? "")}
               className="field tabular"
             />
           </Field>
         </div>
-        <Field label="Genel TYT / AYT net durumu">
+        <Field label={`Genel ${config.primary.label} / ${config.secondary.label} durumu`}>
           <textarea name="net_note" rows={2} defaultValue={v("net_note")} className="field" />
         </Field>
         <Field label="Ağırlıklı yanlış yapılan konular">
@@ -221,7 +235,7 @@ export function SessionForm({
           <Field label="Hedeflenen sınav / dönem sonu net aralığı">
             <input
               name="target_net_range"
-              placeholder="Örn. TYT 95–105"
+              placeholder={config.targetNetPlaceholder}
               defaultValue={v("target_net_range")}
               className="field"
             />
@@ -275,7 +289,7 @@ export function SessionForm({
         <Field label="Planlanan deneme(ler)">
           <input
             name="planned_exams"
-            placeholder="Örn. Cumartesi TYT genel deneme"
+            placeholder={config.plannedExamPlaceholder}
             defaultValue={v("planned_exams")}
             className="field"
           />
@@ -289,6 +303,22 @@ export function SessionForm({
             className="field"
           />
         </Field>
+
+        {/* Haftalık ajanda — öğrencinin Program sayfasıyla aynı veriyi yazar,
+            görüşme kaydedildiğinde birlikte kaydedilir. */}
+        <div className="flex flex-col gap-2 border-t pt-4" style={{ borderColor: "var(--border-hairline)" }}>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <span className="label">Haftalık ajanda</span>
+            <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+              {weekRangeLabel(prefill.planWeekStart)} · öğrencinin Ajanda sayfasında görünür
+            </span>
+          </div>
+          <WeeklyAgenda
+            weekStart={prefill.planWeekStart}
+            items={prefill.planItems}
+            canToggle={false}
+          />
+        </div>
       </Section>
 
       {/* 8 */}

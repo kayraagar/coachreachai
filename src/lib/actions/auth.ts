@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { Role } from "@/lib/database.types";
+import { asTrack } from "@/lib/track";
 
 export type AuthResult = { error: string } | void;
 
@@ -37,6 +38,9 @@ export async function signUp(
   const fullName = String(formData.get("full_name") || "").trim();
   const role = String(formData.get("role") || "student") as Role;
   const coachCode = String(formData.get("coach_code") || "").trim();
+  // Sınav kolu yalnızca öğrenci için anlamlı; bir koçun hem YKS hem LGS
+  // öğrencisi olabilir, koç panelleri daima öğrencinin koluna göre çizilir.
+  const track = asTrack(formData.get("track"));
 
   if (!email || !password || !fullName) {
     return { error: "Tüm alanları doldur." };
@@ -79,7 +83,7 @@ export async function signUp(
       data: {
         full_name: fullName,
         role,
-        ...(role === "student" ? { coach_code: coachCode } : {}),
+        ...(role === "student" ? { coach_code: coachCode, track } : {}),
       },
     },
   });

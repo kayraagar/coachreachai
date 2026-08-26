@@ -3,7 +3,15 @@
 // üretilenle değiştirilebilir; işlevsel olarak eşdeğerdir.
 
 export type Role = "coach" | "student";
-export type ExamType = "TYT" | "AYT" | "Branş";
+
+/** Sınav kolu — ayrıntılı yapılandırma için bkz. src/lib/track.ts */
+export type Track = "YKS" | "LGS";
+
+/** YKS türleri + LGS türleri; "Branş" her iki kolda da geçerli. */
+export type ExamType = "TYT" | "AYT" | "Branş" | "LGS" | "Sözel" | "Sayısal";
+
+/** Ders kategorisi: YKS'de TYT/AYT, LGS'de sözel/sayısal bölüm. */
+export type SubjectCategory = "TYT" | "AYT" | "LGS-Sözel" | "LGS-Sayısal";
 export type GoalType =
   | "daily_questions"
   | "weekly_questions"
@@ -19,6 +27,7 @@ export interface Profile {
   email: string;
   coach_id: string | null;
   invite_code: string | null;
+  track: Track;
   target_exam_date: string | null;
   created_at: string;
 }
@@ -26,7 +35,8 @@ export interface Profile {
 export interface Subject {
   id: string;
   name: string;
-  category: "TYT" | "AYT";
+  category: SubjectCategory;
+  track: Track;
   sort_order: number;
 }
 
@@ -66,6 +76,8 @@ export interface ExamResult {
   correct_count: number;
   wrong_count: number;
   blank_count: number;
+  /** Yanlışın doğruyu götürme katsayısı: YKS 4, LGS 3. */
+  wrong_penalty: number;
   net: number;
 }
 
@@ -93,6 +105,8 @@ export interface StudyPlanItem {
   planned_minutes: number | null;
   completed: boolean;
   actual_minutes: number | null;
+  /** Gün içindeki satır sırası — haftalık ajanda sütunlarında kullanılır. */
+  sort_order: number;
   created_at: string;
 }
 
@@ -126,6 +140,8 @@ export interface WeeklySession {
   adherence_note: string;
 
   // 2) Net ve performans analizi
+  // Kolon adları YKS'den gelir; LGS öğrencilerinde aynı iki alan sırasıyla
+  // sayısal ve sözel neti taşır. Etiketleme src/lib/track.ts üzerinden yapılır.
   tyt_net: number | null;
   ayt_net: number | null;
   net_note: string;
@@ -219,7 +235,10 @@ export interface Database {
         Profile,
         Partial<Profile> & { id: string; role: Role; email: string }
       >;
-      subjects: TableDef<Subject, Partial<Subject> & { name: string; category: "TYT" | "AYT" }>;
+      subjects: TableDef<
+        Subject,
+        Partial<Subject> & { name: string; category: SubjectCategory; track: Track }
+      >;
       topics: TableDef<Topic, Partial<Topic> & { subject_id: string; name: string }>;
       daily_logs: TableDef<
         DailyLog,

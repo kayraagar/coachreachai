@@ -5,6 +5,7 @@ import { getSessionPrefill } from "@/lib/queries";
 import { SessionForm } from "@/components/session/SessionForm";
 import { PageHeader } from "@/components/ui/Reveal";
 import { buildPrefill } from "@/lib/session-prefill";
+import { trackConfig } from "@/lib/track";
 
 export default async function YeniGorusmePage({
   params,
@@ -24,12 +25,13 @@ export default async function YeniGorusmePage({
   // Görüşme geçen haftayı değerlendirir → offset 1.
   const raw = await getSessionPrefill(studentId, 1);
   const prefill = buildPrefill(raw);
+  const config = trackConfig(prefill.track);
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Yeni haftalık görüşme"
-        subtitle="Sayısal alanlar geçen haftanın verisinden otomatik dolduruldu"
+        subtitle={`${config.label} · sayısal alanlar geçen haftanın verisinden otomatik dolduruldu`}
         actions={
           <Link href={`/koc/${studentId}/gorusmeler`} className="btn btn-ghost">
             ← Görüşmeler

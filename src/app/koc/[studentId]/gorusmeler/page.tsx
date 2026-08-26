@@ -5,6 +5,7 @@ import { getWeeklySessions } from "@/lib/queries";
 import { PageHeader, Reveal, EmptyState } from "@/components/ui/Reveal";
 import { IconArrowRight } from "@/components/ui/Icons";
 import { formatDate, formatDuration } from "@/lib/labels";
+import { asTrack, trackConfig } from "@/lib/track";
 
 export default async function KocGorusmelerPage({
   params,
@@ -16,18 +17,19 @@ export default async function KocGorusmelerPage({
 
   const { data: student } = await supabase
     .from("profiles")
-    .select("id, full_name, email")
+    .select("id, full_name, email, track")
     .eq("id", studentId)
     .maybeSingle();
   if (!student) notFound();
 
+  const config = trackConfig(asTrack(student.track));
   const sessions = await getWeeklySessions(studentId);
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Haftalık görüşmeler"
-        subtitle={student.full_name || student.email}
+        subtitle={`${config.label} · ${student.full_name || student.email}`}
         actions={
           <>
             <Link href={`/koc/${studentId}`} className="btn btn-ghost">
@@ -75,8 +77,16 @@ export default async function KocGorusmelerPage({
                   <span className="chip">
                     {s.adherence_pct === null ? "uyum —" : `%${s.adherence_pct} uyum`}
                   </span>
-                  {s.tyt_net !== null && <span className="chip">TYT {s.tyt_net}</span>}
-                  {s.ayt_net !== null && <span className="chip">AYT {s.ayt_net}</span>}
+                  {s[config.primary.key] !== null && (
+                    <span className="chip">
+                      {config.primary.label} {s[config.primary.key]}
+                    </span>
+                  )}
+                  {s[config.secondary.key] !== null && (
+                    <span className="chip">
+                      {config.secondary.label} {s[config.secondary.key]}
+                    </span>
+                  )}
                 </div>
               </Link>
             </Reveal>

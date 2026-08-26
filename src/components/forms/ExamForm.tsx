@@ -3,18 +3,18 @@
 import { useActionState, useState, useMemo } from "react";
 import { addExam } from "@/lib/actions/exams";
 import type { FormResult } from "@/lib/actions/types";
-import type { ExamType, Subject } from "@/lib/database.types";
+import type { Subject } from "@/lib/database.types";
 import { FormStatus } from "@/components/forms/FormStatus";
+import { subjectsForExamType, trackConfig, type Track } from "@/lib/track";
 
-const TYPES: ExamType[] = ["TYT", "AYT", "Branş"];
-
-export function ExamForm({ subjects }: { subjects: Subject[] }) {
+export function ExamForm({ subjects, track }: { subjects: Subject[]; track: Track }) {
+  const config = trackConfig(track);
   const [state, formAction, pending] = useActionState<FormResult, FormData>(addExam, undefined);
-  const [examType, setExamType] = useState<ExamType>("TYT");
+  const [examType, setExamType] = useState(config.defaultExamType);
 
   const relevantSubjects = useMemo(
-    () => (examType === "Branş" ? subjects : subjects.filter((s) => s.category === examType)),
-    [subjects, examType]
+    () => subjectsForExamType(subjects, config, examType),
+    [subjects, config, examType]
   );
 
   return (
@@ -24,7 +24,7 @@ export function ExamForm({ subjects }: { subjects: Subject[] }) {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5">
           <span className="label">Sınav adı</span>
-          <input name="name" required placeholder="Örn. 3D Yayınları TYT-1" className="field" />
+          <input name="name" required placeholder={config.examNamePlaceholder} className="field" />
         </label>
         <label className="flex flex-col gap-1.5">
           <span className="label">Tarih</span>
@@ -45,19 +45,20 @@ export function ExamForm({ subjects }: { subjects: Subject[] }) {
           className="flex gap-1 rounded-xl border p-1"
           style={{ borderColor: "var(--border-hairline)", background: "var(--surface-2)" }}
         >
-          {TYPES.map((t) => (
+          {config.examTypes.map((t) => (
             <button
-              key={t}
+              key={t.value}
               type="button"
-              onClick={() => setExamType(t)}
+              onClick={() => setExamType(t.value)}
+              aria-pressed={examType === t.value}
               className="flex-1 rounded-lg py-1.5 text-sm font-medium transition-all duration-200"
               style={{
-                background: examType === t ? "var(--accent)" : "transparent",
-                color: examType === t ? "var(--accent-contrast)" : "var(--text-secondary)",
-                boxShadow: examType === t ? "var(--shadow-sm)" : "none",
+                background: examType === t.value ? "var(--accent)" : "transparent",
+                color: examType === t.value ? "var(--accent-contrast)" : "var(--text-secondary)",
+                boxShadow: examType === t.value ? "var(--shadow-sm)" : "none",
               }}
             >
-              {t === "Branş" ? "Branş denemesi" : t}
+              {t.label}
             </button>
           ))}
         </div>
@@ -65,7 +66,12 @@ export function ExamForm({ subjects }: { subjects: Subject[] }) {
       </div>
 
       <div className="flex flex-col gap-2">
-        <span className="label">Ders bazlı doğru / yanlış / boş</span>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <span className="label">Ders bazlı doğru / yanlış / boş</span>
+          <span className="text-[0.7rem]" style={{ color: "var(--text-muted)" }}>
+            {config.penaltyHint}
+          </span>
+        </div>
         <div className="flex flex-col gap-1.5">
           <div className="grid grid-cols-[1.6fr_1fr_1fr_1fr] gap-2 px-1 text-[0.7rem]" style={{ color: "var(--text-muted)" }}>
             <span>Ders</span>

@@ -3,6 +3,8 @@ import { ExamForm } from "@/components/forms/ExamForm";
 import { deleteExam } from "@/lib/actions/exams";
 import { PageHeader, Panel, EmptyState } from "@/components/ui/Reveal";
 import { formatShortDate } from "@/lib/labels";
+import { getStudentTrack, getSubjects } from "@/lib/queries";
+import { trackConfig } from "@/lib/track";
 
 export default async function DenemelerPage() {
   const supabase = await createClient();
@@ -10,8 +12,11 @@ export default async function DenemelerPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [{ data: subjects }, { data: exams }] = await Promise.all([
-    supabase.from("subjects").select("*").order("sort_order"),
+  const track = await getStudentTrack(user!.id);
+  const config = trackConfig(track);
+
+  const [subjects, { data: exams }] = await Promise.all([
+    getSubjects(track),
     supabase
       .from("exams")
       .select("id, name, exam_date, exam_type, exam_results(net)")
@@ -23,10 +28,10 @@ export default async function DenemelerPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Denemeler"
-        subtitle="Deneme netlerin — görüşmenin 2. maddesindeki performans analizinin kaynağı"
+        subtitle={`${config.label} deneme netlerin — görüşmenin 2. maddesindeki performans analizinin kaynağı`}
       />
 
-      <ExamForm subjects={subjects ?? []} />
+      <ExamForm subjects={subjects} track={track} />
 
       <Panel title="Deneme geçmişi" delay={80} padded={false}>
         <div className="overflow-x-auto">
