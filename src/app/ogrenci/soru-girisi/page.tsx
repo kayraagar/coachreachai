@@ -3,8 +3,8 @@ import { rel } from "@/lib/rel";
 import { DailyLogForm } from "@/components/forms/DailyLogForm";
 import { deleteDailyLog } from "@/lib/actions/logs";
 import { PageHeader, Panel, EmptyState } from "@/components/ui/Reveal";
-import { formatShortDate } from "@/lib/labels";
-import { getCatalog, getStudentTrack } from "@/lib/queries";
+import { formatDuration, formatShortDate } from "@/lib/labels";
+import { getStudentTrack, getSubjects } from "@/lib/queries";
 
 export default async function SoruGirisiPage() {
   const supabase = await createClient();
@@ -14,11 +14,11 @@ export default async function SoruGirisiPage() {
 
   const track = await getStudentTrack(user!.id);
 
-  const [{ subjects, topics }, { data: logs }] = await Promise.all([
-    getCatalog(track),
+  const [subjects, { data: logs }] = await Promise.all([
+    getSubjects(track),
     supabase
       .from("daily_logs")
-      .select("id, log_date, correct_count, wrong_count, blank_count, duration_minutes, subjects(name), topics(name)")
+      .select("id, log_date, correct_count, wrong_count, blank_count, duration_minutes, topic_text, subjects(name), topics(name)")
       .eq("student_id", user!.id)
       .order("log_date", { ascending: false })
       .limit(30),
@@ -28,7 +28,7 @@ export default async function SoruGirisiPage() {
     <div className="flex flex-col gap-6">
       <PageHeader title="Soru Girişi" subtitle="Çözdüğün soruları ders ve konu bazında kaydet" />
 
-      <DailyLogForm subjects={subjects} topics={topics} />
+      <DailyLogForm subjects={subjects} />
 
       <Panel title="Son kayıtlar" delay={80} padded={false}>
         <div className="overflow-x-auto">
@@ -59,7 +59,7 @@ export default async function SoruGirisiPage() {
                     {rel(l.subjects)?.name}
                   </td>
                   <td className="px-4 py-2.5" style={{ color: "var(--text-muted)" }}>
-                    {rel(l.topics)?.name ?? "—"}
+                    {l.topic_text ?? rel(l.topics)?.name ?? "—"}
                   </td>
                   <td className="tabular px-4 py-2.5 text-right" style={{ color: "var(--status-good)" }}>
                     {l.correct_count}
@@ -71,7 +71,7 @@ export default async function SoruGirisiPage() {
                     {l.blank_count}
                   </td>
                   <td className="tabular px-4 py-2.5 text-right" style={{ color: "var(--text-muted)" }}>
-                    {l.duration_minutes ? `${l.duration_minutes} dk` : "—"}
+                    {l.duration_minutes ? formatDuration(l.duration_minutes) : "—"}
                   </td>
                   <td className="px-4 py-2.5 text-right">
                     <form action={deleteDailyLog.bind(null, l.id)}>

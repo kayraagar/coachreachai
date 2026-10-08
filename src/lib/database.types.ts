@@ -53,6 +53,8 @@ export interface DailyLog {
   log_date: string;
   subject_id: string;
   topic_id: string | null;
+  /** Öğrencinin elle yazdığı konu (migration 006). */
+  topic_text: string | null;
   correct_count: number;
   wrong_count: number;
   blank_count: number;
@@ -242,7 +244,10 @@ export interface Database {
       topics: TableDef<Topic, Partial<Topic> & { subject_id: string; name: string }>;
       daily_logs: TableDef<
         DailyLog,
-        Omit<DailyLog, "id" | "created_at"> & { id?: string }
+        Omit<DailyLog, "id" | "created_at" | "topic_text"> & {
+          id?: string;
+          topic_text?: string | null;
+        }
       >;
       exams: TableDef<Exam, Omit<Exam, "id" | "created_at"> & { id?: string }>;
       exam_results: TableDef<

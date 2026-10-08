@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import {
   getDailyQuestionTrend,
+  getDailyStudyTrend,
   getSubjectBreakdown,
   getExamNetTrend,
   getGoalsWithProgress,
@@ -42,6 +43,7 @@ export default async function OgrenciDashboard() {
 
   const [
     trend,
+    studyTrend,
     breakdown,
     primaryNet,
     secondaryNet,
@@ -57,6 +59,7 @@ export default async function OgrenciDashboard() {
     profileRes,
   ] = await Promise.all([
       getDailyQuestionTrend(studentId, 14),
+      getDailyStudyTrend(studentId, 14),
       getSubjectBreakdown(studentId, 30),
       getExamNetTrend(studentId, config.primary),
       getExamNetTrend(studentId, config.secondary),
@@ -211,6 +214,10 @@ export default async function OgrenciDashboard() {
           targetValue={dailyGoal?.target}
           targetLabel={dailyGoal ? `Hedef: ${dailyGoal.target}` : undefined}
         />
+      </Panel>
+
+      <Panel title="Günlük çalışma süresi" hint="Son 14 gün · saat" delay={180}>
+        <LineChart series={[{ name: "Çalışma (saat)", points: studyTrend }]} decimals={1} />
       </Panel>
 
       <Panel title="Ders bazlı dağılım" hint="Son 30 gün" delay={200}>

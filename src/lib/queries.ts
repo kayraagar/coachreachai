@@ -75,20 +75,111 @@ export async function getTopics(subjectId: string) {
 }
 
 /** Son N gün için günlük toplam çözülen soru sayısı (doğru+yanlış+boş). */
-export async function getDailyQuestionTrend(studentId: string, days = 14) {
-  const supabase = await createClient();
-  const from = format(subDays(new Date(), days - 1), "yyyy-MM-dd");
+/**
+ * Çözülen soruların TEK kaynağı: günlük soru girişleri + deneme sonuçları.
+ *
+ * Denemede çözülen sorular da "çözülen soru" sayılır; bu yüzden soru sayan
+ * her hesap (günlük trend, haftalık takip, ders dağılımı, hedefler, zorlanılan
+ * konular) buradan beslenir. Ayrı ayrı daily_logs sorgulanırsa denemeler
+ * sayımın dışında kalır.
+ *
+ * Süre yalnızca günlük girişlerden gelir — deneme sonuçlarında süre tutulmuyor,
+ * uydurulmuş bir değerle çalışma süresini şişirmek doğru olmaz.
+ */
+export type QuestionEvent = {
+  date: string;
+  subjectId: string | null;
+  subjectName: string | null;
+  topicName: string | null;
+  correct: number;
+  wrong: number;
+  blank: number;
+  minutes: number | null;
+  source: "log" | "exam";
+};
 
-  const { data } = await supabase
+export async function getQuestionEvents(
+  studentId: string,
+  from: string,
+  to?: string
+): Promise<QuestionEvent[]> {
+  const supabase = await createClient();
+
+  let logsQuery = supabase
     .from("daily_logs")
-    .select("log_date, correct_count, wrong_count, blank_count")
+    .select(
+      "log_date, subject_id, correct_count, wrong_count, blank_count, duration_minutes, topic_text, subjects(name), topics(name)"
+    )
     .eq("student_id", studentId)
     .gte("log_date", from);
+  if (to) logsQuery = logsQuery.lte("log_date", to);
+
+  let examsQuery = supabase
+    .from("exams")
+    .select("id, exam_date")
+    .eq("student_id", studentId)
+    .gte("exam_date", from);
+  if (to) examsQuery = examsQuery.lte("exam_date", to);
+
+  const [{ data: logs }, { data: exams }] = await Promise.all([logsQuery, examsQuery]);
+
+  const events: QuestionEvent[] = (logs ?? []).map((row) => ({
+    date: row.log_date,
+    subjectId: row.subject_id,
+    subjectName: rel(row.subjects)?.name ?? null,
+    // Elle yazılan konu (006) önce; eski kayıtlarda listeden seçilen konu.
+    topicName: row.topic_text ?? rel(row.topics)?.name ?? null,
+    correct: row.correct_count,
+    wrong: row.wrong_count,
+    blank: row.blank_count,
+    minutes: row.duration_minutes,
+    source: "log",
+  }));
+
+  if (exams && exams.length > 0) {
+    const dateByExam = new Map(exams.map((e) => [e.id, e.exam_date]));
+    const { data: results } = await supabase
+      .from("exam_results")
+      .select("exam_id, subject_id, correct_count, wrong_count, blank_count, subjects(name)")
+      .in(
+        "exam_id",
+        exams.map((e) => e.id)
+      );
+
+    (results ?? []).forEach((row) => {
+      const date = dateByExam.get(row.exam_id);
+      if (!date) return;
+      events.push({
+        date,
+        subjectId: row.subject_id,
+        subjectName: rel(row.subjects)?.name ?? null,
+        // Deneme sonuçları konu bazında tutulmuyor; konusuz girişlerle aynı
+        // şekilde "Genel" altında toplanır.
+        topicName: null,
+        correct: row.correct_count,
+        wrong: row.wrong_count,
+        blank: row.blank_count,
+        minutes: null,
+        source: "exam",
+      });
+    });
+  }
+
+  return events;
+}
+
+/** Bir olaydaki toplam soru sayısı (doğru + yanlış + boş). */
+function questionTotal(e: QuestionEvent) {
+  return e.correct + e.wrong + e.blank;
+}
+
+export async function getDailyQuestionTrend(studentId: string, days = 14) {
+  const from = format(subDays(new Date(), days - 1), "yyyy-MM-dd");
+  const events = await getQuestionEvents(studentId, from);
 
   const byDate = new Map<string, number>();
-  (data ?? []).forEach((row) => {
-    const total = row.correct_count + row.wrong_count + row.blank_count;
-    byDate.set(row.log_date, (byDate.get(row.log_date) ?? 0) + total);
+  events.forEach((e) => {
+    byDate.set(e.date, (byDate.get(e.date) ?? 0) + questionTotal(e));
   });
 
   const interval = eachDayOfInterval({ start: subDays(new Date(), days - 1), end: new Date() });
@@ -98,29 +189,51 @@ export async function getDailyQuestionTrend(studentId: string, days = 14) {
   });
 }
 
+/**
+ * Son N gün için günlük çalışma süresi (saat).
+ *
+ * "Bu hafta çalışma" kutusuyla aynı kaynaktan beslenir: soru girişlerindeki
+ * süre (kronometre oturumu soruyla kapatılınca oraya da yazılır).
+ */
+export async function getDailyStudyTrend(studentId: string, days = 14) {
+  const from = format(subDays(new Date(), days - 1), "yyyy-MM-dd");
+  const events = await getQuestionEvents(studentId, from);
+
+  const byDate = new Map<string, number>();
+  events.forEach((e) => {
+    if (!e.minutes) return;
+    byDate.set(e.date, (byDate.get(e.date) ?? 0) + e.minutes);
+  });
+
+  const interval = eachDayOfInterval({ start: subDays(new Date(), days - 1), end: new Date() });
+  return interval.map((d) => {
+    const key = format(d, "yyyy-MM-dd");
+    return { x: format(d, "d MMM"), y: Math.round(((byDate.get(key) ?? 0) / 60) * 10) / 10 };
+  });
+}
+
 /** Ders bazlı doğru/yanlış/boş toplamları (son N gün). */
 export async function getSubjectBreakdown(studentId: string, days = 30) {
-  const supabase = await createClient();
   const from = format(subDays(new Date(), days - 1), "yyyy-MM-dd");
-
-  const { data } = await supabase
-    .from("daily_logs")
-    .select("correct_count, wrong_count, blank_count, subject_id, subjects(name)")
-    .eq("student_id", studentId)
-    .gte("log_date", from);
+  const events = await getQuestionEvents(studentId, from);
 
   const byId = new Map<
     string,
     { label: string; correct: number; wrong: number; blank: number }
   >();
 
-  (data ?? []).forEach((row) => {
-    const name = rel(row.subjects)?.name ?? "Diğer";
-    const entry = byId.get(row.subject_id) ?? { label: name, correct: 0, wrong: 0, blank: 0 };
-    entry.correct += row.correct_count;
-    entry.wrong += row.wrong_count;
-    entry.blank += row.blank_count;
-    byId.set(row.subject_id, entry);
+  events.forEach((e) => {
+    const key = e.subjectId ?? "diger";
+    const entry = byId.get(key) ?? {
+      label: e.subjectName ?? "Diğer",
+      correct: 0,
+      wrong: 0,
+      blank: 0,
+    };
+    entry.correct += e.correct;
+    entry.wrong += e.wrong;
+    entry.blank += e.blank;
+    byId.set(key, entry);
   });
 
   return Array.from(byId.values()).sort(
@@ -197,26 +310,12 @@ export async function getGoalsWithProgress(studentId: string) {
 
       if (g.goal_type === "daily_questions") {
         const today = format(new Date(), "yyyy-MM-dd");
-        const { data } = await supabase
-          .from("daily_logs")
-          .select("correct_count, wrong_count, blank_count")
-          .eq("student_id", studentId)
-          .eq("log_date", today);
-        current = (data ?? []).reduce(
-          (s, r) => s + r.correct_count + r.wrong_count + r.blank_count,
-          0
-        );
+        const events = await getQuestionEvents(studentId, today, today);
+        current = events.reduce((sum, e) => sum + questionTotal(e), 0);
       } else if (g.goal_type === "weekly_questions") {
         const from = format(subDays(new Date(), 6), "yyyy-MM-dd");
-        const { data } = await supabase
-          .from("daily_logs")
-          .select("correct_count, wrong_count, blank_count")
-          .eq("student_id", studentId)
-          .gte("log_date", from);
-        current = (data ?? []).reduce(
-          (s, r) => s + r.correct_count + r.wrong_count + r.blank_count,
-          0
-        );
+        const events = await getQuestionEvents(studentId, from);
+        current = events.reduce((sum, e) => sum + questionTotal(e), 0);
       } else if (g.goal_type === "exam_net" || g.goal_type === "subject_net") {
         const { data: lastExam } = await supabase
           .from("exams")
@@ -366,13 +465,8 @@ export async function getWeeklyBreakdown(studentId: string, offsetWeeks = 0) {
   const supabase = await createClient();
   const { start, end, startDate, endDate, weekNo } = weekRange(offsetWeeks);
 
-  const [{ data: logs }, { data: plans }] = await Promise.all([
-    supabase
-      .from("daily_logs")
-      .select("log_date, correct_count, wrong_count, blank_count, duration_minutes")
-      .eq("student_id", studentId)
-      .gte("log_date", start)
-      .lte("log_date", end),
+  const [events, { data: plans }] = await Promise.all([
+    getQuestionEvents(studentId, start, end),
     supabase
       .from("study_plan_items")
       .select("plan_date, completed")
@@ -394,11 +488,11 @@ export async function getWeeklyBreakdown(studentId: string, offsetWeeks = 0) {
     });
   });
 
-  (logs ?? []).forEach((r) => {
-    const cell = cells.get(r.log_date);
+  events.forEach((e) => {
+    const cell = cells.get(e.date);
     if (!cell) return;
-    cell.questions += r.correct_count + r.wrong_count + r.blank_count;
-    cell.minutes += r.duration_minutes ?? 0;
+    cell.questions += questionTotal(e);
+    cell.minutes += e.minutes ?? 0;
   });
 
   (plans ?? []).forEach((r) => {
@@ -435,28 +529,23 @@ const DAY_LABELS = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
  * Son N günde yanlış oranı en yüksek konu/ders kırılımı.
  */
 export async function getWeakTopics(studentId: string, days = 14, limit = 6) {
-  const supabase = await createClient();
   const from = format(subDays(new Date(), days - 1), "yyyy-MM-dd");
 
-  const { data } = await supabase
-    .from("daily_logs")
-    .select("correct_count, wrong_count, blank_count, subjects(name), topics(name)")
-    .eq("student_id", studentId)
-    .gte("log_date", from);
+  const events = await getQuestionEvents(studentId, from);
 
   const byKey = new Map<
     string,
     { subject: string; topic: string; correct: number; wrong: number; blank: number }
   >();
 
-  (data ?? []).forEach((row) => {
-    const subject = rel(row.subjects)?.name ?? "Diğer";
-    const topic = rel(row.topics)?.name ?? "Genel";
+  events.forEach((ev) => {
+    const subject = ev.subjectName ?? "Diğer";
+    const topic = ev.topicName ?? "Genel";
     const key = `${subject}//${topic}`;
     const e = byKey.get(key) ?? { subject, topic, correct: 0, wrong: 0, blank: 0 };
-    e.correct += row.correct_count;
-    e.wrong += row.wrong_count;
-    e.blank += row.blank_count;
+    e.correct += ev.correct;
+    e.wrong += ev.wrong;
+    e.blank += ev.blank;
     byKey.set(key, e);
   });
 

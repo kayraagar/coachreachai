@@ -17,6 +17,7 @@ const LIVE_TABLES = [
   "study_sessions",
   "study_plan_items",
   "exams",
+  "exam_results",
   "notes",
   "session_actions",
   "daily_routines",

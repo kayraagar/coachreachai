@@ -1,24 +1,20 @@
 "use client";
 
-import { useActionState, useState, useMemo } from "react";
+import { useActionState, useState } from "react";
 import { addDailyLog, type FormResult } from "@/lib/actions/logs";
-import type { Subject, Topic } from "@/lib/database.types";
+import type { Subject } from "@/lib/database.types";
 import { FormStatus } from "@/components/forms/FormStatus";
 
-export function DailyLogForm({ subjects, topics }: { subjects: Subject[]; topics: Topic[] }) {
+export function DailyLogForm({ subjects }: { subjects: Subject[] }) {
   const [state, formAction, pending] = useActionState<FormResult, FormData>(addDailyLog, undefined);
   const [subjectId, setSubjectId] = useState(subjects[0]?.id ?? "");
-  const filteredTopics = useMemo(
-    () => topics.filter((t) => t.subject_id === subjectId),
-    [topics, subjectId]
-  );
 
   return (
     <form action={formAction} className="card reveal flex flex-col gap-4 p-5">
       <div>
         <h2 className="section-title">Yeni soru çözüm kaydı</h2>
         <p className="mt-0.5 text-xs" style={{ color: "var(--text-muted)" }}>
-          Konu seçersen koçun “ağırlıklı yanlış yapılan konular” analizini görebilir.
+          Konuyu yazarsan koçun “ağırlıklı yanlış yapılan konular” analizini görebilir.
         </p>
       </div>
 
@@ -51,26 +47,35 @@ export function DailyLogForm({ subjects, topics }: { subjects: Subject[]; topics
           </select>
         </label>
 
-        {filteredTopics.length > 0 && (
-          <label className="flex flex-col gap-1.5 sm:col-span-2">
-            <span className="label">Konu (opsiyonel)</span>
-            <select name="topic_id" defaultValue="" className="field">
-              <option value="">— Belirtilmedi —</option>
-              {filteredTopics.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
+        <label className="flex flex-col gap-1.5 sm:col-span-2">
+          <span className="label">Konu (opsiyonel)</span>
+          <input
+            type="text"
+            name="topic_text"
+            maxLength={120}
+            placeholder="Örn. Üslü İfadeler, Paragraf"
+            autoComplete="off"
+            className="field"
+          />
+        </label>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <NumberField label="Doğru" name="correct_count" />
         <NumberField label="Yanlış" name="wrong_count" />
         <NumberField label="Boş" name="blank_count" />
-        <NumberField label="Süre (dk)" name="duration_minutes" required={false} />
+        <label className="flex flex-col gap-1.5">
+          <span className="label">Çalışma (saat)</span>
+          <input
+            type="number"
+            name="duration_hours"
+            min={0}
+            max={24}
+            step={0.25}
+            placeholder="Örn. 1.5"
+            className="field tabular"
+          />
+        </label>
       </div>
 
       <FormStatus state={state} okText="Kaydedildi." />
@@ -82,15 +87,7 @@ export function DailyLogForm({ subjects, topics }: { subjects: Subject[]; topics
   );
 }
 
-function NumberField({
-  label,
-  name,
-  required = true,
-}: {
-  label: string;
-  name: string;
-  required?: boolean;
-}) {
+function NumberField({ label, name }: { label: string; name: string }) {
   return (
     <label className="flex flex-col gap-1.5">
       <span className="label">{label}</span>
@@ -98,8 +95,8 @@ function NumberField({
         type="number"
         name={name}
         min={0}
-        defaultValue={required ? 0 : undefined}
-        required={required}
+        defaultValue={0}
+        required
         className="field tabular"
       />
     </label>

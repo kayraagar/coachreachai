@@ -18,6 +18,11 @@ const ITEMS: NavItem[] = [
 /** Öğrenci tarafında canlı takip edilen tablolar. */
 const LIVE_TABLES = [
   "daily_logs",
+  // Denemeler de toplam çözülen soruya sayıldığı için panel bunları da dinler.
+  // (exam_results'ta student_id kolonu yok; buradaki abonelik student_id ile
+  // filtrelendiğinden yalnızca exams dinlenebilir — sonuç satırları hemen
+  // ardından yazıldığı için tazeleme yine doğru anda tetiklenir.)
+  "exams",
   "study_plan_items",
   "study_sessions",
   "session_actions",
