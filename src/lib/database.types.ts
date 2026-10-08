@@ -211,6 +211,17 @@ export interface StudySession {
   created_at: string;
 }
 
+/** Sorulardan bağımsız çalışma süresi kaydı (migration 007). */
+export interface StudyTimeEntry {
+  id: string;
+  student_id: string;
+  entry_date: string;
+  minutes: number;
+  subject_id: string | null;
+  note: string;
+  created_at: string;
+}
+
 export interface DailyRoutine {
   id: string;
   student_id: string;
@@ -279,6 +290,14 @@ export interface Database {
       study_sessions: TableDef<
         StudySession,
         Omit<StudySession, "id" | "created_at"> & { id?: string }
+      >;
+      study_time_entries: TableDef<
+        StudyTimeEntry,
+        Omit<StudyTimeEntry, "id" | "created_at" | "entry_date" | "note"> & {
+          id?: string;
+          entry_date?: string;
+          note?: string;
+        }
       >;
       daily_routines: TableDef<
         DailyRoutine,

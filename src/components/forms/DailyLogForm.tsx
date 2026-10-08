@@ -60,22 +60,10 @@ export function DailyLogForm({ subjects }: { subjects: Subject[] }) {
         </label>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-3 gap-3">
         <NumberField label="Doğru" name="correct_count" />
         <NumberField label="Yanlış" name="wrong_count" />
         <NumberField label="Boş" name="blank_count" />
-        <label className="flex flex-col gap-1.5">
-          <span className="label">Çalışma (saat)</span>
-          <input
-            type="number"
-            name="duration_hours"
-            min={0}
-            max={24}
-            step={0.25}
-            placeholder="Örn. 1.5"
-            className="field tabular"
-          />
-        </label>
       </div>
 
       <FormStatus state={state} okText="Kaydedildi." />

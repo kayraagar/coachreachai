@@ -23,10 +23,6 @@ export async function addDailyLog(
   const correct_count = Number(formData.get("correct_count") || 0);
   const wrong_count = Number(formData.get("wrong_count") || 0);
   const blank_count = Number(formData.get("blank_count") || 0);
-  // Süre saat olarak girilir (1.5 = 1 sa 30 dk), mevcut duration_minutes
-  // kolonuna dakika olarak yazılır.
-  const durationHoursRaw = String(formData.get("duration_hours") || "").replace(",", ".").trim();
-  const duration_hours = durationHoursRaw ? Number(durationHoursRaw) : null;
 
   if (!log_date || !subject_id) {
     return { error: "Tarih ve ders zorunlu." };
@@ -34,10 +30,9 @@ export async function addDailyLog(
   if ([correct_count, wrong_count, blank_count].some((n) => Number.isNaN(n) || n < 0)) {
     return { error: "Doğru/yanlış/boş sayıları geçerli olmalı." };
   }
-  if (duration_hours !== null && (Number.isNaN(duration_hours) || duration_hours < 0 || duration_hours > 24)) {
-    return { error: "Çalışma süresi 0 ile 24 saat arasında olmalı." };
-  }
-  const duration_minutes = duration_hours === null ? null : Math.round(duration_hours * 60);
+  // Çalışma süresi artık soru girişinden bağımsız, ayrı formdan girilir
+  // (study_time_entries, migration 007). Eski kayıtlardaki süreler aynen durur.
+  const duration_minutes = null;
 
   const { error } = await supabase.from("daily_logs").insert({
     student_id: user.id,

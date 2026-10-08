@@ -192,17 +192,35 @@ export async function getDailyQuestionTrend(studentId: string, days = 14) {
 /**
  * Son N gün için günlük çalışma süresi (saat).
  *
- * "Bu hafta çalışma" kutusuyla aynı kaynaktan beslenir: soru girişlerindeki
- * süre (kronometre oturumu soruyla kapatılınca oraya da yazılır).
+ * İki kaynağın toplamı:
+ *   * study_time_entries — sorulardan bağımsız girilen süre (migration 007),
+ *   * daily_logs.duration_minutes — eski soru girişlerindeki ve kronometre
+ *     oturumlarının yazdığı süreler (geçmiş veri kaybolmasın diye).
  */
 export async function getDailyStudyTrend(studentId: string, days = 14) {
+  const supabase = await createClient();
   const from = format(subDays(new Date(), days - 1), "yyyy-MM-dd");
-  const events = await getQuestionEvents(studentId, from);
+
+  const [{ data: logs }, { data: entries }] = await Promise.all([
+    supabase
+      .from("daily_logs")
+      .select("log_date, duration_minutes")
+      .eq("student_id", studentId)
+      .gte("log_date", from)
+      .not("duration_minutes", "is", null),
+    supabase
+      .from("study_time_entries")
+      .select("entry_date, minutes")
+      .eq("student_id", studentId)
+      .gte("entry_date", from),
+  ]);
 
   const byDate = new Map<string, number>();
-  events.forEach((e) => {
-    if (!e.minutes) return;
-    byDate.set(e.date, (byDate.get(e.date) ?? 0) + e.minutes);
+  (logs ?? []).forEach((r) => {
+    byDate.set(r.log_date, (byDate.get(r.log_date) ?? 0) + (r.duration_minutes ?? 0));
+  });
+  (entries ?? []).forEach((r) => {
+    byDate.set(r.entry_date, (byDate.get(r.entry_date) ?? 0) + r.minutes);
   });
 
   const interval = eachDayOfInterval({ start: subDays(new Date(), days - 1), end: new Date() });
@@ -210,6 +228,26 @@ export async function getDailyStudyTrend(studentId: string, days = 14) {
     const key = format(d, "yyyy-MM-dd");
     return { x: format(d, "d MMM"), y: Math.round(((byDate.get(key) ?? 0) / 60) * 10) / 10 };
   });
+}
+
+/** Öğrencinin son çalışma süresi kayıtları (migration 007). */
+export async function getRecentStudyTime(studentId: string, limit = 10) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("study_time_entries")
+    .select("id, entry_date, minutes, note, subjects(name)")
+    .eq("student_id", studentId)
+    .order("entry_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    date: row.entry_date,
+    minutes: row.minutes,
+    note: row.note,
+    subjectName: rel(row.subjects)?.name ?? null,
+  }));
 }
 
 /** Ders bazlı doğru/yanlış/boş toplamları (son N gün). */
