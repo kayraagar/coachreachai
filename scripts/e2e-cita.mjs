@@ -147,5 +147,14 @@ try {
 
   console.log(`\n${passed} assertions passed`);
 } finally {
-  for (const id of created) await admin.auth.admin.deleteUser(id).catch(() => undefined);
+  // Temizlik de bir kontroldür: Çita ilişkileri hesap silmeyi engellememeli (migration 012).
+  const failed = [];
+  for (const id of created) {
+    const { error } = await admin.auth.admin.deleteUser(id);
+    if (error) failed.push(`${id}: ${error.message}`);
+  }
+  if (failed.length) {
+    console.error(`FAIL - ${failed.length} test user(s) could not be deleted:\n  ${failed.join("\n  ")}`);
+    process.exitCode = 1;
+  } else console.log(`ok - all ${created.length} test users deleted`);
 }
