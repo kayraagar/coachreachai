@@ -6,13 +6,18 @@ import { PresenceProvider } from "@/components/realtime/PresenceProvider";
 import { RealtimeRefresh } from "@/components/realtime/RealtimeRefresh";
 import { InviteCodeCard } from "@/components/ui/InviteCodeCard";
 
-const ITEMS: NavItem[] = [{ href: "/koc", label: "Öğrencilerim", icon: "users", exact: true }];
+const ITEMS: NavItem[] = [
+  { href: "/koc", label: "Öğrencilerim", icon: "users", exact: true },
+  { href: "/koc/onaylar", label: "Onaylar", icon: "target" },
+];
+const ADMIN_ITEM: NavItem = { href: "/admin", label: "Ekip", icon: "home" };
 
 /**
  * Koç filtresiz abone olur; RLS sayesinde yalnızca kendi öğrencilerinin
  * satır değişiklikleri kendisine ulaşır.
  */
 const LIVE_TABLES = [
+  "plan_proposals",
   "daily_logs",
   "study_sessions",
   "study_plan_items",
@@ -32,7 +37,7 @@ export default async function KocLayout({ children }: { children: React.ReactNod
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role, full_name, email, invite_code")
+    .select("role, full_name, email, invite_code, is_admin")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -44,7 +49,7 @@ export default async function KocLayout({ children }: { children: React.ReactNod
     <PresenceProvider roomId={user.id} userId={user.id} name={name} role="coach">
       <RealtimeRefresh channel={`rt:coach:${user.id}`} tables={LIVE_TABLES} />
       <AppShell
-        items={ITEMS}
+        items={profile?.is_admin ? [...ITEMS, ADMIN_ITEM] : ITEMS}
         userName={name}
         roleLabel="Koç"
         userId={user.id}

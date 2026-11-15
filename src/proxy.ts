@@ -1,7 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/giris", "/kayit", "/auth", "/offline", "/manifest.webmanifest", "/sw.js"];
+// /api/cita: mobil API kendi Bearer kimlik doğrulamasını yapar (çerez yok),
+// bu yüzden çerez tabanlı giriş yönlendirmesinden muaftır.
+const PUBLIC_PATHS = ["/giris", "/kayit", "/auth", "/offline", "/manifest.webmanifest", "/sw.js", "/api/cita"];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });

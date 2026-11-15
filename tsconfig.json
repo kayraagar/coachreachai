@@ -18,8 +18,10 @@
         "name": "next"
       }
     ],
+    "allowImportingTsExtensions": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@cita/core": ["./packages/cita-core/src/index.ts"]
     }
   },
   "include": [
@@ -30,5 +32,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "node_modules.nosync", "mobile", "packages", "scripts"]
 }

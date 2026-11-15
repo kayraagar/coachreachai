@@ -7,9 +7,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint src",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:core": "node --test packages/cita-core/test/*.test.ts",
+    "test:db": "bash supabase/tests/run.sh"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0",
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.112.3",
     "date-fns": "^4.4.0",
