@@ -1,0 +1,38 @@
+{
+  "name": "cita-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start",
+    "ios": "expo run:ios",
+    "android": "expo run:android",
+    "typecheck": "tsc --noEmit",
+    "lint": "expo lint",
+    "export:ios": "expo export --platform ios --output-dir dist/ios",
+    "export:android": "expo export --platform android --output-dir dist/android"
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@supabase/supabase-js": "^2.112.3",
+    "expo": "~58.0.25",
+    "expo-constants": "~58.0.16",
+    "expo-crypto": "~58.0.8",
+    "expo-image-manipulator": "~58.0.16",
+    "expo-image-picker": "~58.0.10",
+    "expo-linking": "~58.0.17",
+    "expo-router": "~58.0.31",
+    "expo-status-bar": "~58.0.5",
+    "expo-web-browser": "~58.0.8",
+    "react": "19.3.0",
+    "react-native": "0.88.1",
+    "react-native-safe-area-context": "~5.11.1",
+    "react-native-screens": "~4.30.1",
+    "react-native-svg": "15.16.0",
+    "react-native-url-polyfill": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "~19.3.0",
+    "typescript": "~6.0.3"
+  }
+}

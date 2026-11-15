@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "Çita",
+    "slug": "cita",
+    "scheme": "cita",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "icon": "./assets/icon.png",
+    "backgroundColor": "#0E1B33",
+    "splash": {
+      "image": "./assets/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0E1B33"
+    },
+    "ios": {
+      "bundleIdentifier": "com.coachreachai.cita",
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Çözemediğin sorunun fotoğrafını çekip Çita'ya göstermek için kamerayı kullanıyoruz.",
+        "NSPhotoLibraryUsageDescription": "Galerideki soru fotoğrafını Çita'ya göndermek için fotoğraflarına erişiyoruz.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.coachreachai.cita",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#0E1B33"
+      },
+      "permissions": ["CAMERA"]
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Galerideki soru fotoğrafını Çita'ya göndermek için fotoğraflarına erişiyoruz.",
+          "cameraPermission": "Çözemediğin sorunun fotoğrafını çekip Çita'ya göstermek için kamerayı kullanıyoruz."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}
