@@ -3,6 +3,16 @@
 Öğrenci ve koç için canlı çalışma takibi, deneme net analizi ve **Haftalık Görüşme
 Ajandası** yönetimi. Next.js 16 (App Router) + Supabase (Postgres, Auth, Realtime).
 
+> **Çita** (YKS/LGS mobil öğrenci uygulaması) bu depoda: `mobile/` (Expo, iOS + Android),
+> ortak alan çekirdeği `packages/cita-core/`, mobil API `src/app/api/cita/*`, ekip yönetimi
+> `/admin`, koç onay kuyruğu `/koc/onaylar`, migration'lar `supabase/migrations/008–011`.
+> Durum ve devam notları: `CITA-STATUS.md` · mağaza yayını: `docs/CITA-STORE-RUNBOOK.md`.
+>
+> ```bash
+> npm run test:core   # alan çekirdeği birim testleri
+> npm run test:db     # yerel Postgres'te migration + RLS/RPC testleri (Supabase taklidi)
+> ```
+
 ## Öne çıkan yetenekler
 
 - **Haftalık Görüşme Ajandası** — basılı formun 8 maddesinin birebir dijital karşılığı.
