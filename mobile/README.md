@@ -7,21 +7,18 @@
 
 ```bash
 cd mobile
-cp .env.example .env      # Supabase URL/anon anahtarı ve Next API adresi
-npm install
-npx expo start            # Expo Go / geliştirme derlemesi
+cp .env.example .env              # Supabase URL/anon anahtarı ve Next API adresi
+npm install --legacy-peer-deps    # react-dom geçişli peer çakışması (Expo SDK 58)
+npx expo start                    # Expo Go / geliştirme derlemesi
 ```
-
-> Bu klasör iCloud Documents içindeyse: `npm install` sonrası
-> `mv node_modules node_modules.nosync && ln -s node_modules.nosync node_modules`
-> (iCloud'un binlerce dosyayı eşitlemesini önler; `tsconfig` `preserveSymlinks` kullanır).
 
 ## Komutlar
 
 | Komut | Açıklama |
 |---|---|
 | `npx tsc --noEmit` | Tip kontrolü |
-| `npm run export:ios` / `npm run export:android` | Metro ile üretim JS paketini derler (native derleme değildir) |
+| `npx expo install --check` | SDK 58 ile bağımlılık uyumu |
+| `npm run export:ios` / `npm run export:android` | Metro ile üretim JS paketi (Hermes) — native derleme DEĞİLDİR |
 | `npx expo run:ios` | Xcode gerekir |
 | `npx expo run:android` | Android SDK + JDK 17 gerekir |
 
