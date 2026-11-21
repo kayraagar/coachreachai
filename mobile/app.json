@@ -28,7 +28,9 @@
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#0E1B33"
       },
-      "permissions": ["CAMERA"]
+      "permissions": [
+        "CAMERA"
+      ]
     },
     "plugins": [
       "expo-router",
@@ -38,7 +40,8 @@
           "photosPermission": "Galerideki soru fotoğrafını Çita'ya göndermek için fotoğraflarına erişiyoruz.",
           "cameraPermission": "Çözemediğin sorunun fotoğrafını çekip Çita'ya göstermek için kamerayı kullanıyoruz."
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": false

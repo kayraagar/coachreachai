@@ -5,10 +5,22 @@
     "allowImportingTsExtensions": true,
     "noEmit": true,
     "paths": {
-      "@cita/core": ["../packages/cita-core/src/index.ts"],
-      "@/*": ["./src/*"]
+      "@cita/core": [
+        "../packages/cita-core/src/index.ts"
+      ],
+      "@/*": [
+        "./src/*"
+      ]
     }
   },
-  "include": ["app/**/*.ts", "app/**/*.tsx", "src/**/*.ts", "src/**/*.tsx", "expo-env.d.ts"],
-  "exclude": ["node_modules", "dist"]
+  "include": [
+    "app/**/*.ts",
+    "app/**/*.tsx",
+    "src/**/*.ts",
+    "src/**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }

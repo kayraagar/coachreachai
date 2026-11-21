@@ -5,7 +5,37 @@ import { NextResponse, type NextRequest } from "next/server";
 // bu yüzden çerez tabanlı giriş yönlendirmesinden muaftır.
 const PUBLIC_PATHS = ["/giris", "/kayit", "/auth", "/offline", "/manifest.webmanifest", "/sw.js", "/api/cita"];
 
+// Geliştirmede mobil uygulamayı bilgisayar tarayıcısında (Expo Web) denemek için
+// /api/cita'ya yerel Expo adresinden CORS izni. Kimlik Bearer ile, çerez yok;
+// üretimde native uygulama CORS'a ihtiyaç duymaz, liste yalnızca env ile genişler.
+const DEV_CORS_ORIGINS =
+  process.env.NODE_ENV === "production" ? [] : ["http://localhost:8081", "http://127.0.0.1:8081"];
+const CORS_ORIGINS = [
+  ...DEV_CORS_ORIGINS,
+  ...(process.env.CITA_CORS_ORIGINS ?? "").split(",").map((s) => s.trim()).filter(Boolean),
+];
+
+function citaCors(request: NextRequest): NextResponse | null {
+  if (!request.nextUrl.pathname.startsWith("/api/cita")) return null;
+  const origin = request.headers.get("origin");
+  if (!origin || !CORS_ORIGINS.includes(origin)) return null;
+  const headers = {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Methods": "GET,POST,PATCH,PUT,DELETE,OPTIONS",
+    "Access-Control-Allow-Headers": "authorization,content-type,idempotency-key,x-cita-provider",
+    "Access-Control-Max-Age": "600",
+    Vary: "Origin",
+  };
+  if (request.method === "OPTIONS") return new NextResponse(null, { status: 204, headers });
+  const res = NextResponse.next({ request });
+  for (const [k, v] of Object.entries(headers)) res.headers.set(k, v);
+  return res;
+}
+
 export async function proxy(request: NextRequest) {
+  const cors = citaCors(request);
+  if (cors) return cors;
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
